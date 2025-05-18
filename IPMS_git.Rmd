@@ -7,9 +7,7 @@ output:
     fig_width: 10
     fig_height: 10
     toc: TRUE
-    number_sections: TRUE
     dev: jpeg
-    code_folding: hide
 ---
 
 ## Overview
@@ -577,7 +575,7 @@ ggplot(data = ALL_DF_filtered_full) +
         )
 ```
 
-![](https://github.com/eriklarsen4/Endo/blob/main/vignettes/Full Scatter-1.png)<!-- -->
+![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/Full%20Scatter-1.png)<!-- -->
 
 ### vATPase Scatter (zoom)
 
@@ -673,7 +671,7 @@ ggplot(data = ALL_DF_filtered_vATPASE_acidification) +
   )
 ```
 
-![](https://github.com/eriklarsen4/Endo/blob/main/vignettes/vATPase Scatter zoom-1.png)<!-- -->
+![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/vATPase%20Scatter%20zoom-1.png)<!-- -->
 
 ### Regulation of Macroautophagy (zoom)
 
@@ -760,7 +758,7 @@ ggplot(data = ALL_DF_filterd_reg_macro) +
         legend.position = c(0.75, 0.3)
   )
 ```
-![](https://github.com/eriklarsen4/Endo/blob/main/vignettes/Macro zoom-1.png)<!-- -->
+![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/Macro%20zoom-1.png)<!-- -->
 
 ### Protein Transport (zoom)
 
@@ -838,7 +836,7 @@ ggplot(data = ALL_DF_filterd_IC_protein_transport) +
         legend.position = c(0.78, 0.4)
   )
 ```
-![](https://github.com/eriklarsen4/Endo/blob/main/vignettes/IC transport zoom-1.png)<!-- -->
+![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/IC%20transport%20zoom-1.png)<!-- -->
 
 ### GO Bar Plot
 
@@ -913,7 +911,7 @@ GO_info_by_term_df_sig |>
   scale_color_manual(values = c('navy', 'darkgoldenrod3', 'darkgray')) +
   scale_fill_manual(values = c('navy', 'darkgoldenrod3', 'darkgray'))
 ```
-![](https://github.com/eriklarsen4/Endo/blob/main/vignettes/GO Bar Plot-1.png)<!-- -->
+![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/GO%20Bar%20Plot-1.png)<!-- -->
 
 ### GO CC Bar Plot
 
@@ -978,7 +976,7 @@ GO_info_by_term_df_sig |>
             vjust = 1,
             alpha = 1)
 ```
-![](https://github.com/eriklarsen4/Endo/blob/main/vignettes/GO CC Bar Plot-1.png)<!-- -->
+![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/GO%20CC%20Bar%20Plot-1.png)<!-- -->
 
 ### GO BP Bar Plot
 
@@ -1039,4 +1037,4 @@ GO_info_by_term_df_sig |>
             vjust = 1,
             alpha = 1)
 ```
-![](https://github.com/eriklarsen4/Endo/blob/main/vignettes/GO BP Bar Plot-1.png)<!-- -->
+![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/GO%20BP%20Bar%20Plot-1.png)<!-- -->

@@ -3,35 +3,32 @@ IPMS vignette
 Erik Larsen
 2025-01-22
 
-- [0.1 Overview](#01-overview)
-- [0.2 Set up Environment](#set-up-environment)
-- [0.3 Figures config](#03-figures-config)
-- [0.4 Wrangle the TSC Data](#wrangle-the-tsc-data)
-- [0.5 Filter Wrangled IPMS Counts
-  Data](#filter-wrangled-ipms-counts-data)
-  - [0.5.1 Apply filtering to TSCs](#051-apply-filtering-to-tscs)
-- [0.6 Upload GO Results](#upload-go-results)
-  - [0.6.1 Cell Component Results](#061-cell-component-results)
-  - [0.6.2 Biological Process Results](#062-biological-process-results)
-  - [0.6.3 Molecular Function Results](#063-molecular-function-results)
-  - [0.6.4 Combine the Results](#064-combine-the-results)
-- [0.7 Integrate with Custom GO Query
+- [Overview](#overview)
+- [Set up Environment](#set-up-environment)
+- [Wrangle the TSC Data](#wrangle-the-tsc-data)
+- [Filter Wrangled IPMS Counts Data](#filter-wrangled-ipms-counts-data)
+  - [Apply filtering to TSCs](#apply-filtering-to-tscs)
+- [Upload GO Results](#upload-go-results)
+  - [Cell Component Results](#cell-component-results)
+  - [Biological Process Results](#biological-process-results)
+  - [Molecular Function Results](#molecular-function-results)
+  - [Combine the Results](#combine-the-results)
+- [Integrate with Custom GO Query
   Function](#integrate-with-custom-go-query-function)
-  - [0.7.1 Query Bioconductor and GO
-    dbs](#071-query-bioconductor-and-go-dbs)
-  - [0.7.2 Integrate Query Results into Counts
-    DF](#072-integrate-query-results-into-counts-df)
-- [0.8 Plot Results](#plot-results)
-  - [0.8.1 Plot Full Scatter](#081-plot-full-scatter)
-  - [0.8.2 vATPase Scatter (zoom)](#082-vatpase-scatter-zoom)
-  - [0.8.3 Regulation of Macroautophagy
-    (zoom)](#083-regulation-of-macroautophagy-zoom)
-  - [0.8.4 Protein Transport (zoom)](#084-protein-transport-zoom)
-  - [0.8.5 GO Bar Plot](#085-go-bar-plot)
-  - [0.8.6 GO CC Bar Plot](#086-go-cc-bar-plot)
-  - [0.8.7 GO BP Bar Plot](#087-go-bp-bar-plot)
+  - [Query Bioconductor and GO dbs](#query-bioconductor-and-go-dbs)
+  - [Integrate Query Results into Counts
+    DF](#integrate-query-results-into-counts-df)
+- [Plot Results](#plot-results)
+  - [Plot Full Scatter](#plot-full-scatter)
+  - [vATPase Scatter (zoom)](#vatpase-scatter-zoom)
+  - [Regulation of Macroautophagy
+    (zoom)](#regulation-of-macroautophagy-zoom)
+  - [Protein Transport (zoom)](#protein-transport-zoom)
+  - [GO Bar Plot](#go-bar-plot)
+  - [GO CC Bar Plot](#go-cc-bar-plot)
+  - [GO BP Bar Plot](#go-bp-bar-plot)
 
-## 0.1 Overview
+## Overview
 
 This markdown was developed to formally document the data analysis
 pipeline for TMEM184B immunoprecipitation tandem mass-spec experiments
@@ -42,7 +39,7 @@ of Cell Science
 Until a container is built, the `R version` used was **R 4.3.2** with
 the packages installed below
 
-## 0.2 Set up Environment
+## Set up Environment
 
 Attach packages
 
@@ -57,24 +54,6 @@ for (package in packages) {
 }
 ```
 
-## 0.3 Figures config
-
-``` r
-knitr::opts_chunk$set(
-  echo = FALSE,
-  warning = FALSE,
-  dpi = 300,
-  dev.args = list(jpeg),
-  fig.width = 10,
-  fig.height = 10,
-  fig.path = "IPMS_files/"
-)
-
-if (!dir.exists("IPMS_files/")) {
-  dir.create("IPMS_files/")
-}
-```
-
 Load the IPMS TSC “raw” data
 
 ``` r
@@ -83,7 +62,7 @@ ALL_DF <- IPMS_counts
 rm(IPMS_counts)
 ```
 
-## 0.4 Wrangle the TSC Data
+## Wrangle the TSC Data
 
 Break the original wrangling call into commented chunks for clarity
 
@@ -209,7 +188,7 @@ ALL_DF <- ALL_DF |>
   dplyr::arrange(desc(avgFC)) # sort by grand FC from highest to lowest)
 ```
 
-## 0.5 Filter Wrangled IPMS Counts Data
+## Filter Wrangled IPMS Counts Data
 
 Filter using aggressive heuristics Dr. Paul Langlais (University of
 Arizona College of Molecular Medicine Proteomics; personal
@@ -293,7 +272,7 @@ Crapome_hits <- Crapome_results |>
   as.character()
 ```
 
-### 0.5.1 Apply filtering to TSCs
+### Apply filtering to TSCs
 
 Use CRAPome list to annotate the TSC data
 
@@ -314,11 +293,11 @@ ALL_DF_filtered <- ALL_DF |>
   dplyr::select(-Crapome_hits)
 ```
 
-## 0.6 Upload GO Results
+## Upload GO Results
 
 Upload the result `.txt` files from the `geneontology.org` query
 
-### 0.6.1 Cell Component Results
+### Cell Component Results
 
 Load and wrangle cell components gene ontology results (in Endo package)
 
@@ -374,7 +353,7 @@ GO_CC_results <- GO_CC_results |>
     ) # sort by the highest FE and lowest adjusted p-value
 ```
 
-### 0.6.2 Biological Process Results
+### Biological Process Results
 
 Load and wrangle biological process gene ontology results (in Endo
 package)
@@ -431,7 +410,7 @@ GO_BP_results <- GO_BP_results |>
     ) # sort by the highest FE and lowest adjusted p-value
 ```
 
-### 0.6.3 Molecular Function Results
+### Molecular Function Results
 
 Load and wrangle molecular function gene ontology results (in Endo
 package)
@@ -487,7 +466,7 @@ GO_MF_results <- GO_MF_results |>
     ) # sort by the highest FE and lowest adjusted p-value
 ```
 
-### 0.6.4 Combine the Results
+### Combine the Results
 
 ``` r
 GO_results <- GO_BP_results |>
@@ -496,14 +475,14 @@ GO_results <- GO_BP_results |>
   dplyr::filter(!grepl(GO_Term, pattern = 'unclassified', ignore.case = T))
 ```
 
-## 0.7 Integrate with Custom GO Query Function
+## Integrate with Custom GO Query Function
 
 Call a custom function created to aggregate all GO information for a
 provided list of gene/protein identifiers
 
 - queries both `Bioconductor` and `GO` dbs
 
-### 0.7.1 Query Bioconductor and GO dbs
+### Query Bioconductor and GO dbs
 
 Use the `TMEM` package query function to acquire `GO` info for plotting
 
@@ -511,7 +490,7 @@ Use the `TMEM` package query function to acquire `GO` info for plotting
 x <- TMEM::get_GO_info(list_of_interest = Crapome_hits, species = 'human')
 ```
 
-### 0.7.2 Integrate Query Results into Counts DF
+### Integrate Query Results into Counts DF
 
 ``` r
 GO_info_by_term_df_sig <- GO_results |>
@@ -535,11 +514,11 @@ GO_info_by_term_df_sig <- GO_results |>
   ) # create a statistical significance column for filtering/annotation
 ```
 
-## 0.8 Plot Results
+## Plot Results
 
 Create DFs for each plot
 
-### 0.8.1 Plot Full Scatter
+### Plot Full Scatter
 
 - Full overview
 
@@ -617,7 +596,9 @@ ggplot(data = ALL_DF_filtered_full) +
         )
 ```
 
-### 0.8.2 vATPase Scatter (zoom)
+![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/Full%20Scatter-1.png)<!-- -->
+
+### vATPase Scatter (zoom)
 
 - vATPase hits
 
@@ -711,7 +692,9 @@ ggplot(data = ALL_DF_filtered_vATPASE_acidification) +
   )
 ```
 
-### 0.8.3 Regulation of Macroautophagy (zoom)
+![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/vATPase%20Scatter%20zoom-1.png)<!-- -->
+
+### Regulation of Macroautophagy (zoom)
 
 - Macroautophagy hits
 
@@ -797,7 +780,9 @@ ggplot(data = ALL_DF_filterd_reg_macro) +
   )
 ```
 
-### 0.8.4 Protein Transport (zoom)
+![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/Macro%20zoom-1.png)<!-- -->
+
+### Protein Transport (zoom)
 
 - Intracellular protein transport hits
 
@@ -874,7 +859,9 @@ ggplot(data = ALL_DF_filterd_IC_protein_transport) +
   )
 ```
 
-### 0.8.5 GO Bar Plot
+![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/IC%20transport%20zoom-1.png)<!-- -->
+
+### GO Bar Plot
 
 ``` r
 GO_info_by_term_df_sig |> 
@@ -948,7 +935,9 @@ GO_info_by_term_df_sig |>
   scale_fill_manual(values = c('navy', 'darkgoldenrod3', 'darkgray'))
 ```
 
-### 0.8.6 GO CC Bar Plot
+![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/GO%20Bar%20Plot-1.png)<!-- -->
+
+### GO CC Bar Plot
 
 ``` r
 GO_info_by_term_df_sig |> 
@@ -1012,7 +1001,9 @@ GO_info_by_term_df_sig |>
             alpha = 1)
 ```
 
-### 0.8.7 GO BP Bar Plot
+![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/GO%20CC%20Bar%20Plot-1.png)<!-- -->
+
+### GO BP Bar Plot
 
 ``` r
 GO_info_by_term_df_sig |> 
@@ -1071,3 +1062,5 @@ GO_info_by_term_df_sig |>
             vjust = 1,
             alpha = 1)
 ```
+
+![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/GO%20BP%20Bar%20Plot-1.png)<!-- -->
