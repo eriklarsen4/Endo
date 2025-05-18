@@ -1,0 +1,7 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^.*\.devpkg.R$
+^.*\.firephly.R$
+^.*\.ipms_final_method.R$
+^.*\.IPMSnb.Rmd$
+^.*\.IPMSmarkdown.html$
