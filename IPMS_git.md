@@ -596,7 +596,7 @@ ggplot(data = ALL_DF_filtered_full) +
         )
 ```
 
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/Full%20Scatter-1.jpeg)<!-- -->
+![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_plots/Full%20Scatter-1.jpeg)<!-- -->
 
 ### vATPase Scatter (zoom)
 
@@ -692,7 +692,7 @@ ggplot(data = ALL_DF_filtered_vATPASE_acidification) +
   )
 ```
 
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/vATPase%20Scatter%20zoom-1.jpeg)<!-- -->
+![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_plots/vATPase%20Scatter%20zoom-1.jpeg)<!-- -->
 
 ### Regulation of Macroautophagy (zoom)
 
@@ -780,7 +780,7 @@ ggplot(data = ALL_DF_filterd_reg_macro) +
   )
 ```
 
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/Macro%20zoom-1.jpeg)<!-- -->
+![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_plots/Macro%20zoom-1.jpeg)<!-- -->
 
 ### Protein Transport (zoom)
 
@@ -859,7 +859,7 @@ ggplot(data = ALL_DF_filterd_IC_protein_transport) +
   )
 ```
 
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/IC%20transport%20zoom-1.jpeg)<!-- -->
+![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_plots/IC%20transport%20zoom-1.jpeg)<!-- -->
 
 ### GO Bar Plot
 
@@ -935,7 +935,7 @@ GO_info_by_term_df_sig |>
   scale_fill_manual(values = c('navy', 'darkgoldenrod3', 'darkgray'))
 ```
 
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/GO%20Bar%20Plot-1.jpeg)<!-- -->
+![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_plots/GO%20Bar%20Plot-1.jpeg)<!-- -->
 
 ### GO CC Bar Plot
 
@@ -1001,7 +1001,7 @@ GO_info_by_term_df_sig |>
             alpha = 1)
 ```
 
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/GO%20CC%20Bar%20Plot-1.jpeg)<!-- -->
+![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_plots/GO%20CC%20Bar%20Plot-1.jpeg)<!-- -->
 
 ### GO BP Bar Plot
 
@@ -1063,4 +1063,4 @@ GO_info_by_term_df_sig |>
             alpha = 1)
 ```
 
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/GO%20BP%20Bar%20Plot-1.jpeg)<!-- -->
+![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_plots/GO%20BP%20Bar%20Plot-1.jpeg)<!-- -->

@@ -12,12 +12,21 @@
 #'                      \item{(4) - BirA with a V5 tag (2 samples)}}
 #'    \item{CRAPome_results}{a dataframe containing the results of a CRAPome
 #'                          query based on the wrangled IPMS counts data}
-#'    \item{GO_CC_results}{a dataframe containing the geneontology.org query
-#'                        results for cell components}
-#'    \item{GO_BP_results}{a dataframe containing the geneontology.org query
-#'                        results for biological processes}
-#'    \item{GO_MF_results}{a dataframe containing the geneontology.org query
-#'                        results for molecular functions}
+#'    \item{GO_CC_results_raw}{a dataframe read from a .txt file containing the
+#'                            raw results of the cell component geneontology.org
+#'                            query}
+#'    \item{GO_CC_results}{a dataframe containing the data-cleaned results of
+#'                        the cell compnent geneontology.org query}
+#'    \item{GO_BP_results_raw}{a dataframe read from a .txt file containing the
+#'                            raw results of the biological process
+#'                            geneontology.org query}
+#'    \item{GO_BP_results}{a dataframe containing the data-cleaned results of
+#'                        the biological processes geneontology.org query}
+#'    \item{GO_MF_results_raw}{a dataframe read from a .txt file containing the
+#'                            raw results of the molecular function
+#'                            geneontology.org query}
+#'    \item{GO_MF_results}{a dataframe containing the data-cleaned results of
+#'                        the molecular function geneontology.org query}
 #'    \item{FIREpHly_WT}{a dataframe containing the microscopy data for
 #'                      wild-type murine hippocampal neurons, measuring
 #'                      ratiometric fluorescence and puncta size metrics of
@@ -26,4 +35,13 @@
 #'                        Tmem184b-mutant murine hippocampal neurons, measuring
 #'                        ratiometric fluorescence and puncta size metrics of
 #'                        endolysosomes}
+#'    \item{tided_puncta_data}{a dataframe containing the data cleaned pH
+#'                            (fluorescence) and puncta metric microscopy data}
+#'    \item{PreCrapomeCandidateList}{a list containing the list of
+#'                                  heuristic, putative TMEM184B interaction
+#'                                  candidates}
+#'    \item{PostCrapomeCandidateList}{a list containing the list of
+#'                                    heuristic, putative TMEM184B interaction
+#'                                    candidates after filtering by common
+#'                                    false-positives in the CRAPome}
 #' }
