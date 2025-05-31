@@ -9,7 +9,7 @@ Authors@R: c(person("Erik", "Larsen",
 Maintainer: Erik Larsen <eriklarsen@arizona.edu>
 Description: Documentation of IPMS-MS data wrangling in TSC format obtained from
   University of Arizona's College of Molecular Medicine's Orbitrap. IPMS-MS data
-  is "post-discovery" of all peptide-ion fragments-- fragments were
+  is "post-discovery" of all unlabeled peptide-ion fragments-- fragments were
   statistically assigned parent peptides and queried against protein sequence
   databases; number of spectra uniquely identified as belonging to a given
   protein were quantified as total spectral counts. TSCs were used for
