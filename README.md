@@ -1,9 +1,8 @@
-<!-- badges: start -->
-[![R-CMD-check](https://github.com/eriklarsen4/Endo/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/eriklarsen4/Endo/actions/workflows/R-CMD-check.yaml)
-![Static Badge](https://img.shields.io/badge/MBNeuroLab-darkblue)
-![R](https://img.shields.io/badge/r-%23276DC3.svg?style=for-the-badge&logo=r&logoColor=white)
-
-<!-- badges: end -->
+ <!-- badges: start -->
+  [![R-CMD-check](https://github.com/eriklarsen4/Endo/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/eriklarsen4/Endo/actions/workflows/R-CMD-check.yaml)
+  ![Static Badge](https://img.shields.io/badge/MBNeuroLab-darkblue)
+  ![R](https://img.shields.io/badge/r-%23276DC3.svg?style=for-the-badge&logo=r&logoColor=white)
+ <!-- badges: end -->
 
 **Endo**
 
