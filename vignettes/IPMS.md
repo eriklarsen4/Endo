@@ -938,7 +938,7 @@ GO_info_by_term_df_sig |>
 ![](https://github.com/eriklarsen4/Endo/blob/dev/IPMS_plots/GO%20Bar%20Plot-1.jpeg)<!-- -->
 
 
-Quick analysis, here:  
+Interpretations:  
 - in general, higher fold enrichment is common among GO terms with few annotated
 members:  
 + explicitly, having a higher percentage of genes/proteins from the list of
