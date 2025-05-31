@@ -941,18 +941,23 @@ GO_info_by_term_df_sig |>
 Interpretations:  
 - in general, higher fold enrichment is common among GO terms with few annotated
 members:  
-+ explicitly, having a higher percentage of genes/proteins from the list of
-interest appear in a GO term (because of it having few gene/protein members)
-leads to that term having a high fold enrichment
-+ conversely, large, vague and general GO terms tend to have weak fold
-enrichment  
-+ therefore, large GO terms tend to have high significance and low fold
-enrichment, and small GO terms tend to have high fold enrichment and lower
-significance
+  + explicitly, having a higher percentage of genes/proteins from the list of
+  interest appear in a GO term (because of it having few gene/protein members)
+  leads to that term having a high fold enrichment
+  
+  + conversely, large, vague and general GO terms tend to have weak fold
+  enrichment  
+  
+  + therefore, large GO terms tend to have high significance and low fold
+  enrichment, and small GO terms tend to have high fold enrichment and lower
+  significance
+  
 - thus, depending on the experiment and the questions, the most informative
 results for unbiased screens are those that balance these two features
+
 - of course, the most informative and powerful results usually are combined with
 other (possibly *a priori*) information
+
 - in our case, we had other preliminary evidence that suggested ties to pH 
 and/or ionic differences in mutant mouse neurons, with phenotypes resembling
 those of autophagy perturbation
