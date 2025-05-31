@@ -54,7 +54,7 @@ for (package in packages) {
 }
 ```
 
-Load the IPMS TSC “raw” data
+Load the IPMS TSC “raw” data (label-free spectral counts file of 8 samples)
 
 ``` r
 data("IPMS_counts")
@@ -190,7 +190,7 @@ ALL_DF <- ALL_DF |>
 
 ## Filter Wrangled IPMS Counts Data
 
-Filter using aggressive heuristics Dr. Paul Langlais (University of
+Filter using aggressive heuristics; supported by Dr. Paul Langlais (University of
 Arizona College of Molecular Medicine Proteomics; personal
 communication)
 
@@ -239,7 +239,7 @@ Compiled_Candidate_List <- ALL_DF |>
   unlist() |> as.character()
 ```
 
-Import CRAPome results (load from Endo package)
+Import CRAPome results (load from the `Endo` package)
 
 ``` r
 data("CRAPome_results")
@@ -299,7 +299,7 @@ Upload the result `.txt` files from the `geneontology.org` query
 
 ### Cell Component Results
 
-Load and wrangle cell components gene ontology results (in Endo package)
+Load and wrangle cell components gene ontology results (in `Endo` package)
 
 ``` r
 data("GO_CC_results")
@@ -355,7 +355,7 @@ GO_CC_results <- GO_CC_results |>
 
 ### Biological Process Results
 
-Load and wrangle biological process gene ontology results (in Endo
+Load and wrangle biological process gene ontology results (in `Endo`
 package)
 
 ``` r
@@ -412,7 +412,7 @@ GO_BP_results <- GO_BP_results |>
 
 ### Molecular Function Results
 
-Load and wrangle molecular function gene ontology results (in Endo
+Load and wrangle molecular function gene ontology results (in `Endo`
 package)
 
 ``` r
@@ -477,8 +477,8 @@ GO_results <- GO_BP_results |>
 
 ## Integrate with Custom GO Query Function
 
-Call a custom function created to aggregate all GO information for a
-provided list of gene/protein identifiers
+Call a custom function (`TMEM` package) created to aggregate all GO information
+for a provided list of gene/protein identifiers
 
 - queries both `Bioconductor` and `GO` dbs
 
@@ -596,7 +596,7 @@ ggplot(data = ALL_DF_filtered_full) +
         )
 ```
 
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_plots/Full%20Scatter-1.jpeg)<!-- -->
+![](https://github.com/eriklarsen4/Endo/blob/dev/IPMS_plots/Full%20Scatter-1.jpeg)<!-- -->
 
 ### vATPase Scatter (zoom)
 
@@ -692,7 +692,7 @@ ggplot(data = ALL_DF_filtered_vATPASE_acidification) +
   )
 ```
 
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_plots/vATPase%20Scatter%20zoom-1.jpeg)<!-- -->
+![](https://github.com/eriklarsen4/Endo/blob/dev/IPMS_plots/vATPase%20Scatter%20zoom-1.jpeg)<!-- -->
 
 ### Regulation of Macroautophagy (zoom)
 
@@ -780,7 +780,7 @@ ggplot(data = ALL_DF_filterd_reg_macro) +
   )
 ```
 
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_plots/Macro%20zoom-1.jpeg)<!-- -->
+![](https://github.com/eriklarsen4/Endo/blob/dev/IPMS_plots/Macro%20zoom-1.jpeg)<!-- -->
 
 ### Protein Transport (zoom)
 
@@ -859,7 +859,7 @@ ggplot(data = ALL_DF_filterd_IC_protein_transport) +
   )
 ```
 
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_plots/IC%20transport%20zoom-1.jpeg)<!-- -->
+![](https://github.com/eriklarsen4/Endo/blob/dev/IPMS_plots/IC%20transport%20zoom-1.jpeg)<!-- -->
 
 ### GO Bar Plot
 
@@ -935,7 +935,7 @@ GO_info_by_term_df_sig |>
   scale_fill_manual(values = c('navy', 'darkgoldenrod3', 'darkgray'))
 ```
 
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_plots/GO%20Bar%20Plot-1.jpeg)<!-- -->
+![](https://github.com/eriklarsen4/Endo/blob/dev/IPMS_plots/GO%20Bar%20Plot-1.jpeg)<!-- -->
 
 ### GO CC Bar Plot
 
@@ -1001,7 +1001,7 @@ GO_info_by_term_df_sig |>
             alpha = 1)
 ```
 
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_plots/GO%20CC%20Bar%20Plot-1.jpeg)<!-- -->
+![](https://github.com/eriklarsen4/Endo/blob/dev/IPMS_plots/GO%20CC%20Bar%20Plot-1.jpeg)<!-- -->
 
 ### GO BP Bar Plot
 
@@ -1063,4 +1063,4 @@ GO_info_by_term_df_sig |>
             alpha = 1)
 ```
 
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_plots/GO%20BP%20Bar%20Plot-1.jpeg)<!-- -->
+![](https://github.com/eriklarsen4/Endo/blob/dev/IPMS_plots/GO%20BP%20Bar%20Plot-1.jpeg)<!-- -->
