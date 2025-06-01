@@ -5,3 +5,4 @@
 ^.*\.ipms_final_method.R$
 ^.*\.IPMSnb.Rmd$
 ^.*\.IPMSmarkdown.html$
+^\.github$

@@ -3,7 +3,7 @@ title: "FIREpHly"
 author: "Erik Larsen"
 date: "2025-01-22"
 output:
-  html_document:
+    html_document:
     toc: yes
     toc_float: 
       collapsed: yes
@@ -11,21 +11,19 @@ output:
     code_folding: hide
 ---
 ```{r knitr opts, include = F}
-knitr::opts_chunk$set(dev = 'jpeg', fig.path = 'C:/Users/Erik/Desktop/Programming/R/Bio/Endo/FIREpHly_files/')
+knitr::opts_chunk$set(dev = 'jpeg', fig.path = '~/FIREpHly_plots/')
 ```
 
-# Overview
+### Overview {.tabset .tabset-pills .tabset-fade}
 
 This markdown was developed to formally document the data analysis of FIRE-pHly 
 data for **Dr. Martha Bhattacharya's lab** at the **University of Arizona** for
 the endolysosomal paper under revision (2025-02-10).
 
-Please open the `FIREpHly.nb.html` file directly to peruse code.
-
-Until a container is built, the `R version` used was **R 4.3.2** with the
+Until an image is built, the `R version` used was **R 4.3.2** with the
 packages installed below
 
-### Set up Environment
+### Set up Environment {.tabset .tabset-pills .tabset-fade}
 
 #### Attach packages
 
@@ -38,8 +36,7 @@ packages <- c(#'TMEM',
               # 'readr',
               'ggsignif',
               'emmeans',
-              'broom',
-              'DT'
+              'broom'
               )
 for ( package in packages ) {
   if (!require(package, character.only = T)) {
@@ -49,1130 +46,27 @@ for ( package in packages ) {
 }
 ```
 
-# Read in FIRE-pHly Data
+### Import FIRE-pHly Data {.tabset .tabset-pills .tabset-fade}
 
-**Load the FIRE-pHly data from separate sheets (not shown)**
+<span style="color:black;font-size: 18px">Directly load the `tidied_puncta_data`</span>
 
 ```{r FIREpHly data load, include = T, message = F, warning = F, echo = T}
-data(FIREpHly_WT)
-data(FIREpHly_Mut)
+data(tidied_puncta_data)
+Puncta_data <- tidied_puncta_data
+rm(tidied_puncta_data)
 ```
 
-### Wrangle the WT Data
+<span style="color:black;font-size: 18px">Code chunks that clean the raw data
+from separate Excel sheets into the data object, `tidied_puncta_data`, have been
+included in the [R Markdown vignette](https://github.com/eriklarsen4/Endo/blob/dev/vignettes/FIREpHly.Rmd)</span>
 
-**Re-arrange the data to make it analyzable (code not shown in md)**
+### Visualize {.tabset .tabset-pills .tabset-fade}
 
-```{r Extract WT cell level data, include = T, message = F, warning = F, echo = F}
-FIRE_pHly_WT_cell_sum <- FIREpHly_WT |>
-  dplyr::slice(c(3,4, 39,40, 74,75, 100,101)) |>
-  dplyr::filter(!grepl(`...1`, pattern = 'From')) |>
-  dplyr::select(where(~!all(is.na(.))))
+<span style="color:black;font-size: 16px">Investigate the distributions of measured variables</span>
 
-col_names <- FIRE_pHly_WT_cell_sum |>
-  dplyr::slice(1) |>
-  unlist() |> as.character() %>%
-  paste0('_', c(rep(1, 7), rep(2, 7), rep(3, 7), rep(4, 7)))
+#### Puncta Area Histogram
 
-colnames(FIRE_pHly_WT_cell_sum) <- col_names
-```
-
-```{r ReArrange WT cell level data, include = T, message = F, warning = F, echo = F}
-FIRE_pHly_WT_cell_sum <- FIRE_pHly_WT_cell_sum |>
-  dplyr::filter(!grepl(Filename_1, pattern = 'Filename')) |>
-  tidyr::pivot_longer(
-    cols = tidyr::everything(),
-    names_to = c('colname', 'iter'),
-    names_sep = '_',
-    values_to = 'value'
-    ) |>
-  dplyr::mutate(count = NA) |>
-  dplyr::mutate(count = dplyr::case_when(colname == 'Filename' ~ 1,
-                                  TRUE ~ NA_real_)) |>
-  dplyr::group_by(colname) |>
-  dplyr::mutate(count = cumsum(count)) |>
-  dplyr::ungroup() |>
-  tidyr::fill(count, .direction = 'down') |>
-  tidyr::pivot_wider(
-    id_cols = count, names_from = colname, values_from = value) |>
-  dplyr::filter(!is.na(Filename)) |>
-  dplyr::mutate(count = dplyr::row_number()) |>
-  dplyr::rename(cell_num = count) |>
-  dplyr::rename_with(~gsub(.x, pattern = '\\s', replacement = '_')) |>
-  dplyr::rename_with(~gsub(.x, pattern = '\\[.*]$', replacement = '')) |>
-  dplyr::rename_with(~gsub(.x, pattern = '``|\\.', replacement = '')) |>
-  dplyr::rename_with(~gsub(.x, pattern = '_Mean_Int', replacement = '')) |>
-  dplyr::rename_with(
-    ~dplyr::if_else(
-      grepl(.x, pattern = '_Puncta'),
-      gsub(paste0('Puncta_Mean_', .x, '_Intensity'),
-           pattern = '_Puncta', replacement = ''),
-      .x)
-    ) |>
-  dplyr::rename(Puncta_Mean_GreenRedRatio = `Green/Red_Ratio`)
-```
-
-```{r Extract WT puncta level data, include = T, message = F, warning = F, echo = F}
-FIRE_pHly_WT_puncta <- FIREpHly_WT |> 
-  dplyr::slice(c(6:36, 42:71, 77:97, 103:129)) %>%
-  dplyr::select(where(~!all(is.na(.))))
-
-col_names <- FIRE_pHly_WT_puncta |>
-  dplyr::slice(1) |> unlist() |> as.character() %>%
-  paste0('_', c(rep(1, 6), rep(2,6), rep(3,6), rep(4,6)))
-
-colnames(FIRE_pHly_WT_puncta) <- col_names
-```
-
-```{r ReARR WT Cells 1 through 4, include = T, message = F, warning = F, echo = F}
-    ## break up into df of the 4 cells across the top
-FIRE_pHly_WT_puncta_1_4 <- FIRE_pHly_WT_puncta |>
-  dplyr::slice(-1) |>
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+1$', replacement = 'Puncta Area_1')
-    ) |>
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+2$', replacement = 'Puncta Area_2')
-    ) |>
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+3$', replacement = 'Puncta Area_3')
-    ) |>
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+4$', replacement = 'Puncta Area_4')
-    ) |>
-  dplyr::mutate(
-    dplyr::across(dplyr::contains('Puncta Area'), ~ as.numeric(.x))
-    ) |>
-  dplyr::rename_with(
-    ~gsub(.x,
-          pattern = 'GREEN/RED',
-          replacement = 'Green/Red Ratio per puncta_3')
-    ) |>
-  dplyr::rename_with(
-    ~gsub(.x,
-          pattern = 'Gree/Red Ratio',
-          replacement= 'Green/Red Ratio')
-    ) |>
-  dplyr::mutate(
-    dummy_1 = dplyr::lag(`Puncta Area_1`) - `Puncta Area_1`, .after = 3
-    ) |>
-  dplyr::mutate(
-    dummy_1 = dplyr::case_when(is.na(dummy_1) &
-                                 dplyr::lead(!is.na(dummy_1)) ~ 0,
-                               TRUE ~ dummy_1)
-    ) |>
-  
-  dplyr::mutate(
-    dummy_2 = dplyr::lag(`Puncta Area_2`) - `Puncta Area_2`, .after = 10
-    ) |>
-  dplyr::mutate(
-    dummy_2 = dplyr::case_when(is.na(dummy_2) &
-                                 dplyr::lead(!is.na(dummy_2)) ~ 0,
-                               TRUE ~ dummy_2)
-    ) |>
-  
-  dplyr::mutate(
-    dummy_3 = dplyr::lag(`Puncta Area_3`) - `Puncta Area_3`, .after = 18
-    ) |>
-  dplyr::mutate(
-    dummy_3 = dplyr::case_when(is.na(dummy_3) &
-                                 dplyr::lead(!is.na(dummy_3)) ~ 0,
-                               TRUE ~ dummy_3)
-    ) |>
-  
-  dplyr::mutate(
-    dummy_4 = dplyr::lag(`Puncta Area_4`) - `Puncta Area_4`, .after = 24
-    ) |>
-  dplyr::mutate(
-    dummy_4 = dplyr::case_when(is.na(dummy_4) &
-                                 dplyr::lead(!is.na(dummy_4)) ~ 0,
-                               TRUE ~ dummy_4)
-    ) |>
-  
-  dplyr::mutate(
-    `Puncta Area_1` = dplyr::case_when(is.na(dummy_1) ~ NA_real_,
-                                       TRUE ~ `Puncta Area_1`)
-    ) |>
-  
-  dplyr::mutate(
-    `Puncta Area_2` = dplyr::case_when(is.na(dummy_2) ~ NA_real_,
-                                       TRUE ~ `Puncta Area_2`)
-    ) |>
-  
-  dplyr::mutate(
-    `Puncta Area_3` = dplyr::case_when(is.na(dummy_3) ~ NA_real_,
-                                       TRUE ~ `Puncta Area_3`)
-    ) |>
-  
-  dplyr::mutate(
-    `Puncta Area_4` = dplyr::case_when(is.na(dummy_4) ~ NA_real_,
-                                       TRUE ~ `Puncta Area_4`)
-    ) |>
-
-  dplyr::mutate(
-    `Puncta Circularity_1` = dplyr::case_when(is.na(dummy_1) &
-                                                is.na(`Puncta ID_1`) ~ NA,
-                                              TRUE ~ `Puncta Circularity_1`)
-    ) |>
-  
-  dplyr::mutate(
-    `Puncta Circularity_2` = dplyr::case_when(is.na(dummy_2) &
-                                                is.na(`Puncta ID_2`) ~ NA,
-                                              TRUE ~ `Puncta Circularity_2`)
-    ) |>
-  
-  dplyr::mutate(
-    `Puncta Circularity_3` = dplyr::case_when(is.na(dummy_3) &
-                                                is.na(`Puncta ID_3`) ~ NA,
-                                              TRUE ~ `Puncta Circularity_3`)
-    ) |>
-  
-  dplyr::mutate(
-    `Puncta Circularity_4` = dplyr::case_when(is.na(dummy_4) &
-                                                is.na(`Puncta ID_4`) ~ NA,
-                                              TRUE ~ `Puncta Circularity_4`)
-    ) |>
-  
-  dplyr::select(-dplyr::contains('dummy')) |>
-
-  dplyr::mutate(
-    `Puncta Area_1` = dplyr::case_when(
-      
-      `Puncta Circularity_1` == "Puncta Circularity" ~ 'Puncta Area',
-      TRUE ~ as.character(`Puncta Area_1`))
-    ) |>
-  
-  dplyr::mutate(
-    `Puncta Area_2` = dplyr::case_when(
-      
-      `Puncta Circularity_2` == "Puncta Circularity" ~ 'Puncta Area',
-      TRUE ~ as.character(`Puncta Area_2`))
-    ) |>
-  
-  dplyr::mutate(`Puncta Area_3` = dplyr::case_when(
-    
-    `Puncta Circularity_3` == "Puncta Circularity" ~ 'Puncta Area',
-    TRUE ~ as.character(`Puncta Area_3`))
-    ) |>
-  
-  dplyr::mutate(
-    `Puncta Area_4` = dplyr::case_when(
-      
-      `Puncta Circularity_4` == "Puncta Circularity" ~ 'Puncta Area',
-      TRUE ~ as.character(`Puncta Area_4`))
-    ) |>
-  
-  dplyr::slice(1:30) |>
-  dplyr::mutate(
-    `Puncta ID_3` = dplyr::case_when(
-      
-      grepl(`Puncta ID_3`, pattern = 'Avg') ~ NA,
-      TRUE ~ `Puncta ID_3`)
-    ) |>
-  
-  tidyr::pivot_longer(
-    cols = tidyr::everything(),
-    names_to = c('cell', 'cell_num'),
-    names_sep = '_', values_to = 'values') |>
-  
-  dplyr::mutate(
-    cell_num = gsub(cell_num, pattern = ' ratio', replacement = '')
-    ) |>
-  dplyr::mutate(
-    cell = gsub(cell, pattern = ' per puncta', replacement = '')
-    ) |>
-  dplyr::mutate(
-    puncta_num = dplyr::case_when(!grepl(values, pattern = '\\.') ~ values,
-                                  TRUE ~ NA)
-    ) |>
-  dplyr::mutate(
-    overall_puncta_num = dplyr::case_when(!is.na(puncta_num) ~ 1,
-                                          TRUE ~ NA_real_)
-    ) |>
-  dplyr::group_by(overall_puncta_num) |>
-  dplyr::mutate(overall_puncta_num = cumsum(overall_puncta_num)) |>
-  dplyr::ungroup() |>
-  tidyr::fill(overall_puncta_num, .direction = 'down') |>
-  dplyr::filter(
-    !is.na(values)
-
-  ) |>
-  tidyr::pivot_wider(
-    id_cols = c('cell_num', 'puncta_num' ,'overall_puncta_num'),
-    names_from = 'cell',
-    values_from = 'values'
-    ) |>
-  tidyr::fill(`Puncta ID`, .direction = 'down') |>
-  dplyr::filter(!is.na(`Puncta Area`)) |>
-  dplyr::select(where(~!all(is.na(.)))) |>
-  dplyr::relocate(`Puncta ID`, .after = 1) |>
-  dplyr::rename_with(~gsub(.x, pattern = '\\s', replacement = '_')) |>
-  dplyr::rename_with(~gsub(.x, pattern = '\\/', replacement = '')) |>
-  dplyr::rename_with(~gsub(.x, pattern = '``', replacement = '')) |>
-  # dplyr::mutate(across(c(4:8), ~as.numeric(.x))) |>
-  dplyr::select(-overall_puncta_num)
-```
-
-```{r ReARR WT Cells 5 and 6, include = T, message = F, warning = F, echo = F}
-    ## break up into df of the next two vertically oriented cells
-FIRE_pHly_WT_puncta_5_6 <- FIRE_pHly_WT_puncta |>
-  dplyr::slice(-1) |>
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+1$', replacement = 'Puncta Area_1')
-    ) |>
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+2$', replacement = 'Puncta Area_2')
-    ) |>
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+3$', replacement = 'Puncta Area_3')
-    ) |>
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+4$', replacement = 'Puncta Area_4')
-    ) |>
-  dplyr::mutate(
-    dplyr::across(dplyr::contains('Puncta Area'), ~ as.numeric(.x))
-    ) |>
-
-  dplyr::mutate(
-    dummy_1 = dplyr::lag(`Puncta Area_1`) - `Puncta Area_1`, .after = 3
-    ) |>
-  dplyr::mutate(dummy_1 = dplyr::case_when(is.na(dummy_1) &
-                                             dplyr::lead(!is.na(dummy_1)) ~ 0,
-                                           TRUE ~ dummy_1)) |>
-  dplyr::mutate(
-    dummy_2 = dplyr::lag(`Puncta Area_2`) - `Puncta Area_2`, .after = 10
-    ) |>
-  dplyr::mutate(dummy_2 = dplyr::case_when(is.na(dummy_2) &
-                                             dplyr::lead(!is.na(dummy_2)) ~ 0,
-                                           TRUE ~ dummy_2)) |>
-  dplyr::mutate(
-    dummy_3 = dplyr::lag(`Puncta Area_3`) - `Puncta Area_3`, .after = 18
-    ) |>
-  dplyr::mutate(dummy_3 = dplyr::case_when(is.na(dummy_3) &
-                                             dplyr::lead(!is.na(dummy_3)) ~ 0,
-                                           TRUE ~ dummy_3)) |>
-  dplyr::mutate(
-    dummy_4 = dplyr::lag(`Puncta Area_4`) - `Puncta Area_4`, .after = 24
-    ) |>
-  dplyr::mutate(dummy_4 = dplyr::case_when(is.na(dummy_4) &
-                                             dplyr::lead(!is.na(dummy_4)) ~ 0,
-                                           TRUE ~ dummy_4)) |>
-  dplyr::mutate(
-    `Puncta Area_1` = dplyr::case_when(is.na(dummy_1) ~ NA_real_,
-                                            TRUE ~ `Puncta Area_1`)) |>
-  dplyr::mutate(`Puncta Area_2` = dplyr::case_when(is.na(dummy_2) ~ NA_real_,
-                                                   TRUE ~ `Puncta Area_2`)
-                ) |>
-  dplyr::mutate(`Puncta Area_3` = dplyr::case_when(is.na(dummy_3) ~ NA_real_,
-                                                   TRUE ~ `Puncta Area_3`)
-                ) |>
-  dplyr::mutate(`Puncta Area_4` = dplyr::case_when(is.na(dummy_4) ~ NA_real_,
-                                                   TRUE ~ `Puncta Area_4`)
-                ) |>
-  dplyr::mutate(
-    `Puncta Circularity_1` = dplyr::case_when(is.na(dummy_1) &
-                                                is.na(`Puncta ID_1`) ~ NA,
-                                              TRUE ~ `Puncta Circularity_1`)
-    ) |>
-  dplyr::mutate(
-    `Puncta Circularity_2` = dplyr::case_when(is.na(dummy_2) &
-                                                is.na(`Puncta ID_2`) ~ NA,
-                                              TRUE ~ `Puncta Circularity_2`)
-    ) |>
-  dplyr::mutate(
-    `Puncta Circularity_3` = dplyr::case_when(is.na(dummy_3) &
-                                                is.na(`Puncta ID_3`) ~ NA,
-                                              TRUE ~ `Puncta Circularity_3`)
-    ) |>
-  dplyr::mutate(
-    `Puncta Circularity_4` = dplyr::case_when(is.na(dummy_4) &
-                                                is.na(`Puncta ID_4`) ~ NA,
-                                              TRUE ~ `Puncta Circularity_4`)
-    ) |>
-  dplyr::select(-contains('dummy')) |>
-
-  dplyr::mutate(
-    `Puncta Area_1` = dplyr::case_when(
-      
-      `Puncta Circularity_1` == "Puncta Circularity" ~ 'Puncta Area',
-      TRUE ~ as.character(`Puncta Area_1`))
-    
-    ) |>
-  dplyr::mutate(
-    `Puncta Area_2` = dplyr::case_when(
-      
-      `Puncta Circularity_2` == "Puncta Circularity" ~ 'Puncta Area',
-      TRUE ~ as.character(`Puncta Area_2`))
-    
-    ) |>
-  dplyr::mutate(
-    `Puncta Area_3` = dplyr::case_when(
-      
-      `Puncta Circularity_3` == "Puncta Circularity" ~ 'Puncta Area',
-      TRUE ~ as.character(`Puncta Area_3`))
-    
-    ) |>
-  dplyr::mutate(
-    `Puncta Area_4` = dplyr::case_when(
-      
-      `Puncta Circularity_4` == "Puncta Circularity" ~ 'Puncta Area',
-      TRUE ~ as.character(`Puncta Area_4`))
-    
-    ) |>
-  dplyr::slice(31:75) |>
-  dplyr::select(where(~!all(is.na(.)))) |>
-  dplyr::rename_with(
-    ~gsub(.x,
-          pattern = 'Gree/Red Ratio per puncta_1',
-          replacement = 'GreenRed_Ratio')) |>
-  dplyr::rename_with(~gsub(.x, pattern = '_1', replacement = '')) |>
-  dplyr::rename_with(~gsub(.x, pattern = '\\s', replacement = '_')) |>
-  dplyr::rename_with(~gsub(.x, pattern = '``', replacement = '')) |>
-  dplyr::slice(-c(1,31)) |>
-  dplyr::mutate(cell_num = dplyr::case_when(dplyr::row_number() <= 23 ~ "5",
-                                            dplyr::row_number() >= 30 ~ "6",
-                                            TRUE ~ NA), .before = Puncta_ID
-                ) |>
-  dplyr::filter(!is.na(cell_num))
-```
-
-```{r ReARR WT Cells 7 through 10, include = T, message = F, warning = F, echo = F}
-FIRE_pHly_WT_puncta_7_10 <- FIRE_pHly_WT_puncta |>
-  dplyr::slice(-1) |>
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+1$', replacement = 'Puncta Area_1')) |>
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+2$', replacement = 'Puncta Area_2')) |>
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+3$', replacement = 'Puncta Area_3')) |>
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+4$', replacement = 'Puncta Area_4')) |>
-  dplyr::mutate(
-    dplyr::across(dplyr::contains('Puncta Area'), ~ as.numeric(.x))) |>
-  dplyr::rename_with(
-    ~gsub(.x,
-          pattern = 'GREEN/RED',
-          replacement = 'Green/Red Ratio per puncta_3')) |>
-  dplyr::rename_with(
-    ~gsub(.x,
-          pattern = 'Gree/Red Ratio',
-          replacement= 'Green/Red Ratio')) |>
-  
-  dplyr::mutate(
-    dummy_1 = dplyr::lag(`Puncta Area_1`) - `Puncta Area_1`, .after = 3) |>
-  dplyr::mutate(
-    dummy_1 = dplyr::case_when(is.na(dummy_1) &
-                                 dplyr::lead(!is.na(dummy_1)) ~ 0,
-                               TRUE ~ dummy_1)) |>
-  
-  dplyr::mutate(
-    dummy_2 = dplyr::lag(`Puncta Area_2`) - `Puncta Area_2`, .after = 10) |>
-  dplyr::mutate(
-    dummy_2 = dplyr::case_when(is.na(dummy_2) &
-                                 dplyr::lead(!is.na(dummy_2)) ~ 0,
-                               TRUE ~ dummy_2)) |>
-  
-  dplyr::mutate(
-    dummy_3 = dplyr::lag(`Puncta Area_3`) - `Puncta Area_3`, .after = 18) |>
-  dplyr::mutate(
-    dummy_3 = dplyr::case_when(is.na(dummy_3) &
-                                 dplyr::lead(!is.na(dummy_3)) ~ 0,
-                               TRUE ~ dummy_3)) |>
-  
-  dplyr::mutate(
-    dummy_4 = dplyr::lag(`Puncta Area_4`) - `Puncta Area_4`, .after = 24) |>
-  dplyr::mutate(
-    dummy_4 = dplyr::case_when(is.na(dummy_4) &
-                                 dplyr::lead(!is.na(dummy_4)) ~ 0,
-                               TRUE ~ dummy_4)) |>
-  
-  dplyr::mutate(
-    `Puncta Area_1` = dplyr::case_when(is.na(dummy_1) ~ NA_real_,
-                                       TRUE ~ `Puncta Area_1`)) |>
-  
-  dplyr::mutate(
-    `Puncta Area_2` = dplyr::case_when(is.na(dummy_2) ~ NA_real_,
-                                       TRUE ~ `Puncta Area_2`)) |>
-  
-  dplyr::mutate(
-    `Puncta Area_3` = dplyr::case_when(is.na(dummy_3) ~ NA_real_,
-                                       TRUE ~ `Puncta Area_3`)) |>
-  
-  dplyr::mutate(
-    `Puncta Area_4` = dplyr::case_when(is.na(dummy_4) ~ NA_real_,
-                                       TRUE ~ `Puncta Area_4`)) |>
-
-  dplyr::mutate(
-    `Puncta Circularity_1` = dplyr::case_when(is.na(dummy_1) &
-                                                is.na(`Puncta ID_1`) ~ NA,
-                                              TRUE ~ `Puncta Circularity_1`)
-    ) |>
-  dplyr::mutate(
-    `Puncta Circularity_2` = dplyr::case_when(is.na(dummy_2) &
-                                                is.na(`Puncta ID_2`) ~ NA,
-                                              TRUE ~ `Puncta Circularity_2`)
-    ) |>
-  dplyr::mutate(
-    `Puncta Circularity_3` = dplyr::case_when(is.na(dummy_3) &
-                                                is.na(`Puncta ID_3`) ~ NA,
-                                              TRUE ~ `Puncta Circularity_3`)
-    ) |>
-  dplyr::mutate(
-    `Puncta Circularity_4` = dplyr::case_when(is.na(dummy_4) &
-                                                is.na(`Puncta ID_4`) ~ NA,
-                                              TRUE ~ `Puncta Circularity_4`)
-    ) |>
-  dplyr::select(-contains('dummy')) |>
-
-  dplyr::mutate(
-    `Puncta Area_1` = dplyr::case_when(
-      `Puncta Circularity_1` == "Puncta Circularity" ~ 'Puncta Area',
-      TRUE ~ as.character(`Puncta Area_1`))) |>
-  
-  dplyr::mutate(
-    `Puncta Area_2` = dplyr::case_when(
-      `Puncta Circularity_2` == "Puncta Circularity" ~ 'Puncta Area',
-      TRUE ~ as.character(`Puncta Area_2`))) |>
-  
-  dplyr::mutate(
-    `Puncta Area_3` = dplyr::case_when(
-      `Puncta Circularity_3` == "Puncta Circularity" ~ 'Puncta Area',
-      TRUE ~ as.character(`Puncta Area_3`))) |>
-  
-  dplyr::mutate(
-    `Puncta Area_4` = dplyr::case_when(
-      `Puncta Circularity_4` == "Puncta Circularity" ~ 'Puncta Area',
-      TRUE ~ as.character(`Puncta Area_4`))) |>
-  
-  dplyr::mutate(
-    `Puncta ID_3` = dplyr::case_when(grepl(`Puncta ID_3`, pattern = 'Avg') ~ NA,
-                                     TRUE ~ `Puncta ID_3`)) |>
-  dplyr::slice(c(83:102)) |>
-  tidyr::pivot_longer(
-    cols = everything(),
-    names_to = c('cell', 'cell_num'),
-    names_sep = '_',
-    values_to = 'values') |>
-  dplyr::mutate(
-    cell_num = gsub(cell_num, pattern = ' ratio', replacement = '')) |>
-  dplyr::mutate(
-    cell = gsub(cell, pattern = ' per puncta', replacement = '')) |>
-  dplyr::mutate(
-    puncta_num = dplyr::case_when(!grepl(values, pattern = '\\.') ~ values,
-                                  TRUE ~ NA)) |>
-  dplyr::mutate(
-    overall_puncta_num = dplyr::case_when(!is.na(puncta_num) ~ 1,
-                                          TRUE ~ NA_real_)) |>
-  dplyr::group_by(overall_puncta_num) |>
-  dplyr::mutate(overall_puncta_num = cumsum(overall_puncta_num)) |>
-  dplyr::ungroup() |>
-  tidyr::fill(overall_puncta_num, .direction = 'down') |>
-  dplyr::filter(
-    !is.na(values)
-  ) |>
-  tidyr::pivot_wider(
-    id_cols = c('cell_num', 'puncta_num' ,'overall_puncta_num'),
-    names_from = 'cell',
-    values_from = 'values') |>
-  tidyr::fill(`Puncta ID`, .direction = 'down') |>
-  dplyr::filter(!is.na(`Puncta Area`)) |>
-  dplyr::select(where(~!all(is.na(.)))) |>
-  dplyr::relocate(`Puncta ID`, .after = 1) |>
-  dplyr::rename_with(~gsub(.x, pattern = '\\s', replacement = '_')) |>
-  dplyr::rename_with(~gsub(.x, pattern = '\\/', replacement = '')) |>
-  dplyr::rename_with(~gsub(.x, pattern = '``', replacement = '')) |>
-  # dplyr::mutate(across(c(4:8), ~as.numeric(.x))) |>
-  dplyr::mutate(overall_puncta_num = as.character(overall_puncta_num)) |>
-  dplyr::mutate(cell_num = dplyr::case_when(cell_num == "1" ~ "7",
-                                     cell_num == "2" ~ "8",
-                                     cell_num == "3" ~ "9",
-                                     cell_num == "4" ~ "10")) |>
-  dplyr::select(-overall_puncta_num)
-```
-
-```{r Join WT Cells, include = T, warning = F, message = F, echo = F}
-    ## join the WT puncta across 10 cells
-FIRE_pHly_WT_puncta_tot <- FIRE_pHly_WT_puncta_1_4 |>
-  dplyr::full_join(FIRE_pHly_WT_puncta_5_6) |>
-  dplyr::full_join(FIRE_pHly_WT_puncta_7_10)
-
-WT_sum <- FIRE_pHly_WT_puncta_tot |>
-  dplyr::group_by(cell_num) |>
-  dplyr::mutate(n_puncta = dplyr::n()) |>
-  dplyr::mutate(dplyr::across(c(3:7), ~as.numeric(.x, digits = 22))) |>
-  dplyr::summarize(
-    
-    n_puncta = dplyr::n(),
-    tot_puncta_area = sum(Puncta_Area)#,
-    # cell_mean_green_mean_intensity = mean(Green_Mean_Intensity),
-    # cell_mean_red_mean_intensity = mean(Red_Mean_Intensity),
-    # cell_mean_green_red_ratio = mean(GreenRed_Ratio)
-    
-    ) |>
-  dplyr::full_join(FIRE_pHly_WT_cell_sum |>
-                     dplyr::mutate(cell_num = as.character(cell_num))) |>
-  # error in total puncta on cell sum, remove
-  dplyr::select(-Puncta_Count) |>
-  dplyr::mutate(
-    # n_puncta_per_cell_area = n_puncta/(as.numeric(Cell_Body_Area)/100),
-    puncta_cell_body_ratio = tot_puncta_area/(as.double(Cell_Body_Area)),
-    sum_puncta_area = sum(tot_puncta_area),
-    sum_Cell_Body_area = sum(as.double(Cell_Body_Area)))
-```
-
-### Wrangle the MUT Data
-
-**Re-arrange the data to make it analyzable (code not shown in md)**
-
-```{r Extract MUT cell level data, include = T, message = F, warning = F, echo = F}
-FIRE_pHly_Mut_cell_sum <- FIREpHly_Mut |>
-  dplyr::slice(c(2,3, 50,51, 101,102, 152,153)) |>
-  dplyr::select(where(~!all(is.na(.))))
-
-col_names <- FIRE_pHly_Mut_cell_sum |>
-  dplyr::slice(1) |> unlist() |> as.character() %>%
-  paste0('_', c(rep(1, 7), rep(2, 7), rep(3, 7), rep(4, 7), rep(5, 7)))
-
-colnames(FIRE_pHly_Mut_cell_sum) <- col_names
-```
-
-```{r ReArrange MUT cell level data, include = T, message = F, warning = F, echo = F}
-FIRE_pHly_Mut_cell_sum <- FIRE_pHly_Mut_cell_sum |>
-  dplyr::filter(!grepl(Filename_1, pattern = 'Filename')) |>
-  tidyr::pivot_longer(
-    cols = tidyr::everything(),
-    names_to = c('colname', 'iter'),
-    names_sep = '_',
-    values_to = 'value') |>
-  dplyr::mutate(count = NA) |>
-  dplyr::mutate(count = dplyr::case_when(colname == 'Filename' ~ 1,
-                                         TRUE ~ NA_real_)) |>
-  dplyr::group_by(colname) |>
-  dplyr::mutate(count = cumsum(count)) |>
-  dplyr::ungroup() |>
-  tidyr::fill(count, .direction = 'down') |>
-  tidyr::pivot_wider(
-    id_cols = count, names_from = colname, values_from = value) |>
-  dplyr::filter(!is.na(Filename)) |>
-  dplyr::mutate(count = dplyr::row_number()) |>
-  dplyr::rename(cell_num = count) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = '\\s', replacement = '_')) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = '\\[.*]$', replacement = '')) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = '``|\\.', replacement = '')) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = '_Mean_Int', replacement = '')) %>%
-  dplyr::rename_with(
-    ~dplyr::if_else(grepl(.x, pattern = '_Puncta'),
-                    gsub(paste0('Puncta_Mean_', .x, '_Intensity'),
-                         pattern = '_Puncta',
-                         replacement = ''),
-                    .x)) |>
-  dplyr::rename(Puncta_Mean_GreenRedRatio = `Green/Red_Ratio`)
-```
-
-```{r Extract MUT puncta level data, include = T, message = F, warning = F, echo = F}
-FIRE_pHly_Mut_puncta <- FIREpHly_Mut |>
-  dplyr::slice(c(5:48, 50:90, 101:142, 152:178)) |>
-  dplyr::slice(-c(45,46, 86,87, 128,129)) |>
-  dplyr::select(where(~!all(is.na(.)))) |> dplyr::select(-1)
-
-col_names <- FIRE_pHly_Mut_puncta |>
-  dplyr::slice(1) |> unlist() |> as.character() %>%
-  paste0('_', c(rep(1, 6), rep(2,6), rep(3,6), rep(4,6), rep(5,6)))
-
-colnames(FIRE_pHly_Mut_puncta) <- col_names
-```
-
-```{r ReARR MUT cells 1 through 5, include = T, message = F, warning = F, echo = F}
-FIRE_pHly_Mut_puncta_1_5 <- FIRE_pHly_Mut_puncta |>
-  dplyr::slice(-1) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+1$', replacement = 'Puncta Area_1')) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+2$', replacement = 'Puncta Area_2')) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+3$', replacement = 'Puncta Area_3')) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+4$', replacement = 'Puncta Area_4')) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+5$', replacement = 'Puncta Area_5')) %>%
-  dplyr::mutate(dplyr::across(dplyr::contains('Puncta Area'), ~ as.numeric(.x))) %>%
-  dplyr::mutate(
-    dplyr::across(c(dplyr::contains('Puncta ID')), ~ 
-                    dplyr::case_when(grepl(., pattern = 'Avg.') ~ NA,
-                                     TRUE ~ .))) |>
-  dplyr::mutate(
-    dplyr::across(c(dplyr::contains("Circularity")), ~
-                    dplyr::case_when(grepl(., pattern = '[:alpha:]') ~ NA,
-                                     TRUE ~ .))) |>
-  dplyr::slice(1:35) |>
-
-  dplyr::mutate(dummy_1 = dplyr::lag(`Puncta Area_1`) - `Puncta Area_1`,
-                .after = 3) |>
-  dplyr::mutate(dummy_1 = dplyr::case_when(is.na(dummy_1) &
-                                             dplyr::lead(!is.na(dummy_1)) ~ 0,
-                                           TRUE ~ dummy_1)) |>
-  dplyr::mutate(dummy_2 = dplyr::lag(`Puncta Area_2`) - `Puncta Area_2`,
-                .after = 10) |>
-  dplyr::mutate(dummy_2 = dplyr::case_when(is.na(dummy_2) &
-                                             dplyr::lead(!is.na(dummy_2)) ~ 0,
-                                           TRUE ~ dummy_2)) |>
-  dplyr::mutate(dummy_3 = dplyr::lag(`Puncta Area_3`) - `Puncta Area_3`,
-                .after = 18) |>
-  dplyr::mutate(dummy_3 = dplyr::case_when(is.na(dummy_3) &
-                                             dplyr::lead(!is.na(dummy_3)) ~ 0,
-                                           TRUE ~ dummy_3)) |>
-  dplyr::mutate(dummy_4 = dplyr::lag(`Puncta Area_4`) - `Puncta Area_4`,
-                .after = 24) |>
-  dplyr::mutate(dummy_4 = dplyr::case_when(is.na(dummy_4) &
-                                             dplyr::lead(!is.na(dummy_4)) ~ 0,
-                                           TRUE ~ dummy_4)) |>
-  dplyr::mutate(dummy_5 = dplyr::lag(`Puncta Area_5`) - `Puncta Area_5`,
-                .after = 24) |>
-  dplyr::mutate(dummy_5 = dplyr::case_when(is.na(dummy_5) &
-                                             dplyr::lead(!is.na(dummy_5)) ~ 0,
-                                           TRUE ~ dummy_5)) |>
-  dplyr::mutate(`Puncta Area_1` = dplyr::case_when(is.na(dummy_1) ~ NA_real_,
-                                                   TRUE ~ `Puncta Area_1`)) |>
-  dplyr::mutate(`Puncta Area_2` = dplyr::case_when(is.na(dummy_2) ~ NA_real_,
-                                                   TRUE ~ `Puncta Area_2`)) |>
-  dplyr::mutate(`Puncta Area_3` = dplyr::case_when(is.na(dummy_3) ~ NA_real_,
-                                                   TRUE ~ `Puncta Area_3`)) |>
-  dplyr::mutate(`Puncta Area_4` = dplyr::case_when(is.na(dummy_4) ~ NA_real_,
-                                                   TRUE ~ `Puncta Area_4`)) |>
-  dplyr::mutate(`Puncta Area_5` = dplyr::case_when(is.na(dummy_5) ~ NA_real_,
-                                                   TRUE ~ `Puncta Area_5`)) |>
-
-  dplyr::mutate(
-    `Puncta Circularity_1` = dplyr::case_when(is.na(dummy_1) &
-                                                is.na(`Puncta ID_1`) ~ NA,
-                                              TRUE ~ `Puncta Circularity_1`)) |>
-  dplyr::mutate(
-    `Puncta Circularity_2` = dplyr::case_when(is.na(dummy_2) &
-                                                is.na(`Puncta ID_2`) ~ NA,
-                                              TRUE ~ `Puncta Circularity_2`)) |>
-  dplyr::mutate(
-    `Puncta Circularity_3` = dplyr::case_when(is.na(dummy_3) &
-                                                is.na(`Puncta ID_3`) ~ NA,
-                                              TRUE ~ `Puncta Circularity_3`)) |>
-  dplyr::mutate(
-    `Puncta Circularity_4` = dplyr::case_when(is.na(dummy_4) &
-                                                is.na(`Puncta ID_4`) ~ NA,
-                                              TRUE ~ `Puncta Circularity_4`)) |>
-  dplyr::mutate(
-    `Puncta Circularity_5` = dplyr::case_when(is.na(dummy_5) &
-                                                is.na(`Puncta ID_5`) ~ NA,
-                                              TRUE ~ `Puncta Circularity_5`)) |>
-  dplyr::select(-dplyr::contains('dummy')) |>
-
-  dplyr::mutate(
-    `Puncta Area_1` = dplyr::case_when(
-      `Puncta Circularity_1` == "Puncta Circularity" ~ 'Puncta Area',
-      TRUE ~ as.character(`Puncta Area_1`))) |>
-  dplyr::mutate(
-    `Puncta Area_2` = dplyr::case_when(
-      `Puncta Circularity_2` == "Puncta Circularity" ~ 'Puncta Area',
-      TRUE ~ as.character(`Puncta Area_2`))) |>
-  dplyr::mutate(
-    `Puncta Area_3` = dplyr::case_when(
-      `Puncta Circularity_3` == "Puncta Circularity" ~ 'Puncta Area',
-      TRUE ~ as.character(`Puncta Area_3`))) |>
-  dplyr::mutate(
-    `Puncta Area_4` = dplyr::case_when(
-      `Puncta Circularity_4` == "Puncta Circularity" ~ 'Puncta Area',
-      TRUE ~ as.character(`Puncta Area_4`))) |>
-  dplyr::mutate(
-    `Puncta Area_5` = dplyr::case_when(
-      `Puncta Circularity_5` == "Puncta Circularity" ~ 'Puncta Area',
-      TRUE ~ as.character(`Puncta Area_5`))) |>
-
-  tidyr::pivot_longer(
-    cols = tidyr::everything(),
-    names_to = c('cell', 'cell_num'),
-    names_sep = '_',
-    values_to = 'values') |>
-  dplyr::mutate(
-    cell_num = gsub(cell_num, pattern = ' ratio', replacement = '')) |>
-  dplyr::mutate(
-    cell = gsub(cell, pattern = ' per puncta', replacement = '')) |>
-  dplyr::mutate(
-    puncta_num = dplyr::case_when(!grepl(values, pattern = '\\.') ~ values,
-                                  TRUE ~ NA)) |>
-  dplyr::mutate(
-    overall_puncta_num = dplyr::case_when(!is.na(puncta_num) ~ 1,
-                                          TRUE ~ NA_real_)) |>
-  dplyr::group_by(overall_puncta_num) |>
-  dplyr::mutate(overall_puncta_num = cumsum(overall_puncta_num)) |>
-  dplyr::ungroup() |>
-  tidyr::fill(overall_puncta_num, .direction = 'down') |>
-  dplyr::filter(
-    !is.na(values)
-  ) |>
-  tidyr::pivot_wider(
-    id_cols = c('cell_num', 'puncta_num' ,'overall_puncta_num'), 
-    names_from = 'cell', 
-    values_from = 'values') |>
-  tidyr::fill(`Puncta ID`, .direction = 'down') |>
-  dplyr::filter(!is.na(`Puncta Area`)) %>%
-  dplyr::select(where(~!all(is.na(.)))) |>
-  dplyr::relocate(`Puncta ID`, .after = 1) %>%
-  dplyr::rename_with(~gsub(.x, pattern = '\\s', replacement = '_')) %>%
-  dplyr::rename_with(~gsub(.x, pattern = '\\/', replacement = '')) %>%
-  dplyr::rename_with(~gsub(.x, pattern = '``', replacement = '')) |>
-  dplyr::rename(GreenRed_Ratio = GREENRED_ratio) |>
-  # dplyr::mutate(dplyr::across(c(4:8), ~as.numeric(.x))) |>
-  dplyr::select(-overall_puncta_num)
-```
-
-```{r ReARR MUT cells 6 through 8, include = T, message = F, warning = F, echo = F}
-FIRE_pHly_Mut_puncta_6_8 <- FIRE_pHly_Mut_puncta |>
-  dplyr::slice(-1) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+1$', replacement = 'Puncta Area_1')) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+2$', replacement = 'Puncta Area_2')) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+3$', replacement = 'Puncta Area_3')) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+4$', replacement = 'Puncta Area_4')) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+5$', replacement = 'Puncta Area_5')) %>%
-  dplyr::mutate(
-    dplyr::across(dplyr::contains('Puncta Area'), ~ as.numeric(.x))) %>%
-  dplyr::mutate(
-    dplyr::across(c(dplyr::contains('Puncta ID')), ~ 
-                    dplyr::case_when(grepl(., pattern = 'Avg.') ~ NA,
-                                     TRUE ~ .))) %>%
-  dplyr::mutate(
-    dplyr::across(c(dplyr::contains("Circularity")), ~
-                    dplyr::case_when(grepl(., pattern = '[:alpha:]') ~ NA,
-                                     TRUE ~ .))) |>
-  dplyr::slice(c(46:82)) %>%
-  dplyr::mutate(dplyr::across(c(dplyr::contains('_2')), ~dplyr::lead(.))) |>
-  dplyr::mutate(dummy_1 = dplyr::lag(`Puncta Area_1`) - `Puncta Area_1`,
-                .after = 3) |>
-  dplyr::mutate(dummy_1 = dplyr::case_when(is.na(dummy_1) &
-                                             dplyr::lead(!is.na(dummy_1)) ~ 0,
-                                           TRUE ~ dummy_1)) |>
-  dplyr::mutate(dummy_2 = dplyr::lag(`Puncta Area_2`) - `Puncta Area_2`,
-                .after = 10) |>
-  dplyr::mutate(dummy_2 = dplyr::case_when(is.na(dummy_2) &
-                                             dplyr::lead(!is.na(dummy_2)) ~ 0,
-                                           TRUE ~ dummy_2)) |>
-  dplyr::mutate(dummy_3 = dplyr::lag(`Puncta Area_3`) - `Puncta Area_3`,
-                .after = 18) |>
-  dplyr::mutate(dummy_3 = dplyr::case_when(is.na(dummy_3) &
-                                             dplyr::lead(!is.na(dummy_3)) ~ 0,
-                                           TRUE ~ dummy_3)) |>
-
-  dplyr::mutate(`Puncta Area_1` = dplyr::case_when(is.na(dummy_1) ~ NA_real_,
-                                                   TRUE ~ `Puncta Area_1`)) |>
-  dplyr::mutate(`Puncta Area_2` = dplyr::case_when(is.na(dummy_2) ~ NA_real_,
-                                                   TRUE ~ `Puncta Area_2`)) |>
-  dplyr::mutate(`Puncta Area_3` = dplyr::case_when(is.na(dummy_3) ~ NA_real_,
-                                                   TRUE ~ `Puncta Area_3`)) %>%
-  dplyr::mutate(
-    dplyr::across(c(dplyr::contains('Area_')), ~as.character(.x))) |>
-  dplyr::select(-dplyr::contains('dummy')) |>
-  tidyr::pivot_longer(
-    cols = tidyr::everything(),
-    names_to = c('cell', 'cell_num'),
-    names_sep = '_',
-    values_to = 'values') |>
-  dplyr::mutate(
-    cell_num = gsub(cell_num, pattern = ' ratio', replacement = '')) |>
-  dplyr::mutate(
-    cell = gsub(cell, pattern = ' per puncta', replacement = '')) |>
-  dplyr::mutate(
-    puncta_num = dplyr::case_when(!grepl(values, pattern = '\\.') ~ values,
-                                  TRUE ~ NA)) |>
-  dplyr::mutate(
-    overall_puncta_num = dplyr::case_when(!is.na(puncta_num) ~ 1,
-                                          TRUE ~ NA_real_)) |>
-  dplyr::group_by(overall_puncta_num) |>
-  dplyr::mutate(overall_puncta_num = cumsum(overall_puncta_num)) |>
-  dplyr::ungroup() |>
-  tidyr::fill(overall_puncta_num, .direction = 'down') |>
-  dplyr::filter(!is.na(values)) |>
-  tidyr::pivot_wider(
-    id_cols = c('cell_num', 'puncta_num' ,'overall_puncta_num'),
-    names_from = 'cell',
-    values_from = 'values') |>
-  tidyr::fill(`Puncta ID`, .direction = 'down') |>
-  dplyr::filter(!is.na(`Puncta Area`)) %>%
-  dplyr::select(where(~!all(is.na(.)))) |>
-  dplyr::relocate(`Puncta ID`, .after = 1) %>%
-  dplyr::rename_with(~gsub(.x, pattern = '\\s', replacement = '_')) %>%
-  dplyr::rename_with(~gsub(.x, pattern = '\\/', replacement = '')) %>%
-  dplyr::rename_with(~gsub(.x, pattern = '``', replacement = '')) %>%
-  dplyr::rename(GreenRed_Ratio = GREENRED_ratio) |>
-  # dplyr::mutate(dplyr::across(c(4:8), ~as.numeric(.x))) |>
-  dplyr::select(-overall_puncta_num) |>
-  dplyr::mutate(
-    cell_num = dplyr::case_when(cell_num == 1 ~ "6",
-                                cell_num == 2 ~ "7",
-                                cell_num == 3 ~ "8"))
-```
-
-```{r ReARR MUT cells 9 through 11, include = T, message = F, warning = F, echo = F}
-FIRE_pHly_Mut_puncta_9_11 <- FIRE_pHly_Mut_puncta |>
-  dplyr::slice(-1) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+1$', replacement = 'Puncta Area_1')) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+2$', replacement = 'Puncta Area_2')) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+3$', replacement = 'Puncta Area_3')) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+4$', replacement = 'Puncta Area_4')) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+5$', replacement = 'Puncta Area_5')) %>%
-  dplyr::mutate(
-    dplyr::across(dplyr::contains('Puncta Area'), ~ as.numeric(.x))) |>
-  dplyr::slice(c(84:122)) |>
-  dplyr::slice(-1) %>%
-  dplyr::mutate(
-    dplyr::across(c(dplyr::contains('Puncta ID')), ~
-                    dplyr::case_when(grepl(., pattern = 'Avg.') ~ NA,
-                                     TRUE ~ .))) %>%
-  dplyr::mutate(
-    dplyr::across(c(dplyr::contains("Circularity")), ~
-                    dplyr::case_when(grepl(., pattern = '[:alpha:]') ~ NA,
-                                     TRUE ~ .))) |>
-  dplyr::mutate(dummy_1 = dplyr::lag(`Puncta Area_1`) - `Puncta Area_1`,
-                .after = 3) |>
-  dplyr::mutate(dummy_1 = dplyr::case_when(is.na(dummy_1) &
-                                             dplyr::lead(!is.na(dummy_1)) ~ 0,
-                                           TRUE ~ dummy_1)) |>
-  dplyr::mutate(dummy_2 = dplyr::lag(`Puncta Area_2`) - `Puncta Area_2`,
-                .after = 10) |>
-  dplyr::mutate(dummy_2 = dplyr::case_when(is.na(dummy_2) &
-                                             dplyr::lead(!is.na(dummy_2)) ~ 0,
-                                           TRUE ~ dummy_2)) |>
-  dplyr::mutate(dummy_3 = dplyr::lag(`Puncta Area_3`) - `Puncta Area_3`,
-                .after = 18) |>
-  dplyr::mutate(dummy_3 = dplyr::case_when(is.na(dummy_3) &
-                                             dplyr::lead(!is.na(dummy_3)) ~ 0,
-                                           TRUE ~ dummy_3)) |>
-  dplyr::mutate(`Puncta Area_1` = dplyr::case_when(is.na(dummy_1) ~ NA_real_,
-                                                   TRUE ~ `Puncta Area_1`)) |>
-  dplyr::mutate(`Puncta Area_2` = dplyr::case_when(is.na(dummy_2) ~ NA_real_,
-                                                   TRUE ~ `Puncta Area_2`)) |>
-  dplyr::mutate(`Puncta Area_3` = dplyr::case_when(is.na(dummy_3) ~ NA_real_,
-                                                   TRUE ~ `Puncta Area_3`)) |>
-  dplyr::mutate(
-    `Puncta Circularity_1` = dplyr::case_when(is.na(dummy_1) &
-                                                is.na(`Puncta ID_1`) ~ NA,
-                                              TRUE ~ `Puncta Circularity_1`)) |>
-  dplyr::mutate(
-    `Puncta Circularity_2` = dplyr::case_when(is.na(dummy_2) &
-                                                is.na(`Puncta ID_2`) ~ NA,
-                                              TRUE ~ `Puncta Circularity_2`)) |>
-  dplyr::mutate(
-    `Puncta Circularity_3` = dplyr::case_when(is.na(dummy_3) &
-                                                is.na(`Puncta ID_3`) ~ NA,
-                                              TRUE ~ `Puncta Circularity_3`)) |>
-  dplyr::select(-dplyr::contains('dummy')) |>
-  dplyr::mutate(
-    `Puncta Area_1` = dplyr::case_when(
-      `Puncta Circularity_1` == "Puncta Circularity" ~ 'Puncta Area',
-      TRUE ~ as.character(`Puncta Area_1`))) |>
-  dplyr::mutate(
-    `Puncta Area_2` = dplyr::case_when(
-      `Puncta Circularity_2` == "Puncta Circularity" ~ 'Puncta Area',
-      TRUE ~ as.character(`Puncta Area_2`))) |>
-  dplyr::mutate(
-    `Puncta Area_3` = dplyr::case_when(
-      `Puncta Circularity_3` == "Puncta Circularity" ~ 'Puncta Area',
-      TRUE ~ as.character(`Puncta Area_3`))) %>%
-  dplyr::mutate(
-    dplyr::across(dplyr::contains('Puncta Area'), ~as.character(.))) |>
-  tidyr::pivot_longer(
-    cols = tidyr::everything(), 
-    names_to = c('cell', 'cell_num'), 
-    names_sep = '_', 
-    values_to = 'values') |>
-  dplyr::mutate(
-    cell_num = gsub(cell_num, pattern = ' ratio', replacement = '')) |>
-  dplyr::mutate(
-    cell = gsub(cell, pattern = ' per puncta', replacement = '')) |>
-  dplyr::mutate(
-    puncta_num = dplyr::case_when(!grepl(values, pattern = '\\.') ~ values,
-                                  TRUE ~ NA)) |>
-  dplyr::mutate(
-    overall_puncta_num = dplyr::case_when(!is.na(puncta_num) ~ 1,
-                                          TRUE ~ NA_real_)) |>
-  dplyr::group_by(overall_puncta_num) |>
-  dplyr::mutate(overall_puncta_num = cumsum(overall_puncta_num)) |>
-  dplyr::ungroup() |>
-  tidyr::fill(overall_puncta_num, .direction = 'down') |>
-  dplyr::filter(!is.na(values)) |>
-  tidyr::pivot_wider(
-    id_cols = c('cell_num', 'puncta_num' ,'overall_puncta_num'),
-    names_from = 'cell',
-    values_from = 'values') |>
-  tidyr::fill(`Puncta ID`, .direction = 'down') |>
-  dplyr::filter(!is.na(`Puncta Area`)) %>%
-  dplyr::select(where(~!all(is.na(.)))) |>
-  dplyr::relocate(`Puncta ID`, .after = 1) %>%
-  dplyr::rename_with(~gsub(.x, pattern = '\\s', replacement = '_')) %>%
-  dplyr::rename_with(~gsub(.x, pattern = '\\/', replacement = '')) %>%
-  dplyr::rename_with(~gsub(.x, pattern = '``', replacement = '')) |>
-  dplyr::rename(GreenRed_Ratio = GREENRED_ratio) |>
-  # dplyr::mutate(dplyr::across(c(4:8), ~as.numeric(.x))) |>
-  dplyr::select(-overall_puncta_num) |>
-  dplyr::mutate(cell_num = dplyr::case_when(cell_num == 1 ~ "9",
-                                            cell_num == 2 ~ "10",
-                                            cell_num == 3 ~ "11"))
-```
-
-```{r ReARR MUT cells 12 and 13, include = T, message = F, warning = F, echo = F}
-FIRE_pHly_Mut_puncta_12_13 <- FIRE_pHly_Mut_puncta |>
-  dplyr::slice(-1) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+1$', replacement = 'Puncta Area_1')) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+2$', replacement = 'Puncta Area_2')) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+3$', replacement = 'Puncta Area_3')) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+4$', replacement = 'Puncta Area_4')) %>%
-  dplyr::rename_with(
-    ~gsub(.x, pattern = 'Puncta Area.+5$', replacement = 'Puncta Area_5')) %>%
-  dplyr::mutate(
-    dplyr::across(dplyr::contains('Puncta Area'), ~ as.numeric(.x))) |>
-  dplyr::slice(c(125:147)) %>%
-  dplyr::mutate(
-    dplyr::across(c(dplyr::contains('Puncta ID')), ~
-                    dplyr::case_when(grepl(., pattern = 'Avg.') ~ NA,
-                                     TRUE ~ .))) %>%
-  dplyr::mutate(
-    dplyr::across(c(dplyr::contains("Circularity")), ~
-                    dplyr::case_when(grepl(., pattern = '[:alpha:]') ~ NA,
-                                     TRUE ~ .))) |>
-  dplyr::mutate(dummy_1 = dplyr::lag(`Puncta Area_1`) - `Puncta Area_1`,
-                .after = 3) |>
-  dplyr::mutate(dummy_1 = dplyr::case_when(is.na(dummy_1) &
-                                             dplyr::lead(!is.na(dummy_1)) ~ 0,
-                                           TRUE ~ dummy_1)) |>
-  dplyr::mutate(dummy_2 = dplyr::lag(`Puncta Area_2`) - `Puncta Area_2`,
-                .after = 10) |>
-  dplyr::mutate(dummy_2 = dplyr::case_when(is.na(dummy_2) &
-                                             dplyr::lead(!is.na(dummy_2)) ~ 0,
-                                           TRUE ~ dummy_2)) |>
-  dplyr::mutate(`Puncta Area_1` = dplyr::case_when(is.na(dummy_1) ~ NA_real_,
-                                                   TRUE ~ `Puncta Area_1`)) |>
-  dplyr::mutate(`Puncta Area_2` = dplyr::case_when(is.na(dummy_2) ~ NA_real_,
-                                                   TRUE ~ `Puncta Area_2`)) |>
-  dplyr::mutate(
-    `Puncta Circularity_1` = dplyr::case_when(is.na(dummy_1) &
-                                                is.na(`Puncta ID_1`) ~ NA,
-                                              TRUE ~ `Puncta Circularity_1`)) |>
-  dplyr::mutate(
-    `Puncta Circularity_2` = dplyr::case_when(is.na(dummy_2) &
-                                                is.na(`Puncta ID_2`) ~ NA,
-                                              TRUE ~ `Puncta Circularity_2`)) |>
-  dplyr::select(-dplyr::contains('dummy')) |>
-  dplyr::mutate(
-    `Puncta Area_1` = dplyr::case_when(
-      `Puncta Circularity_1` == "Puncta Circularity" ~ 'Puncta Area',
-      TRUE ~ as.character(`Puncta Area_1`))) |>
-  dplyr::mutate(
-    `Puncta Area_2` = dplyr::case_when(
-      `Puncta Circularity_2` == "Puncta Circularity" ~ 'Puncta Area',
-      TRUE ~ as.character(`Puncta Area_2`))) %>%
-  dplyr::mutate(
-    dplyr::across(dplyr::contains('Puncta Area'), ~as.character(.))) |>
-  tidyr::pivot_longer(
-    cols = tidyr::everything(),
-    names_to = c('cell', 'cell_num'),
-    names_sep = '_',
-    values_to = 'values') |>
-  dplyr::mutate(
-    cell_num = gsub(cell_num, pattern = ' ratio', replacement = '')) |>
-  dplyr::mutate(
-    cell = gsub(cell, pattern = ' per puncta', replacement = '')) |>
-  dplyr::mutate(
-    puncta_num = dplyr::case_when(!grepl(values, pattern = '\\.') ~ values,
-                                  TRUE ~ NA)) |>
-  dplyr::mutate(
-    overall_puncta_num = dplyr::case_when(!is.na(puncta_num) ~ 1,
-                                          TRUE ~ NA_real_)) |>
-  dplyr::group_by(overall_puncta_num) |>
-  dplyr::mutate(overall_puncta_num = cumsum(overall_puncta_num)) |>
-  dplyr::ungroup() |>
-  tidyr::fill(overall_puncta_num, .direction = 'down') |>
-  dplyr::filter(!is.na(values)) |>
-  tidyr::pivot_wider(
-    id_cols = c('cell_num', 'puncta_num' ,'overall_puncta_num'),
-    names_from = 'cell',
-    values_from = 'values') |>
-  tidyr::fill(`Puncta ID`, .direction = 'down') |>
-  dplyr::filter(!is.na(`Puncta Area`)) %>%
-  dplyr::select(where(~!all(is.na(.)))) |>
-  dplyr::relocate(`Puncta ID`, .after = 1) %>%
-  dplyr::rename_with(~gsub(.x, pattern = '\\s', replacement = '_')) %>%
-  dplyr::rename_with(~gsub(.x, pattern = '\\/', replacement = '')) %>%
-  dplyr::rename_with(~gsub(.x, pattern = '``', replacement = '')) %>%
-  dplyr::rename(GreenRed_Ratio = GREENRED_ratio) |>
-  # dplyr::mutate(dplyr::across(c(4:8), ~as.numeric(.x))) |>
-  dplyr::select(-overall_puncta_num) |>
-  dplyr::mutate(cell_num = dplyr::case_when(cell_num == 1 ~ "12",
-                                            cell_num == 2 ~ "13"))
-```
-
-```{r Join MUT cells, include = T, message = F, warning = F, echo = F}
-FIRE_pHly_Mut_puncta_tot <- FIRE_pHly_Mut_puncta_1_5 |>
-  dplyr::full_join(FIRE_pHly_Mut_puncta_6_8) |>
-  dplyr::full_join(FIRE_pHly_Mut_puncta_9_11) |>
-  dplyr::full_join(FIRE_pHly_Mut_puncta_12_13) %>%
-  dplyr::mutate(dplyr::across(c(1:2), ~as.numeric(.x))) |>
-  dplyr::arrange(cell_num, Puncta_ID) %>%
-  dplyr::mutate(dplyr::across(c(1:2), ~as.character(.x)))
-```
-
-
-```{r Join WT and MUT data, include = T, message = F, warning = F, echo = F}
-Puncta_data <- FIRE_pHly_WT_puncta_tot %>%
-  dplyr::mutate(dplyr::across(c(1:2), ~as.numeric(.x))) |>
-  dplyr::arrange(cell_num, Puncta_ID) |>
-  dplyr::mutate(Genotype = 'WT', .before = 1) %>%
-  dplyr::mutate(dplyr::across(c(2:3), ~as.character(.x))) |>
-  dplyr::full_join(
-    FIRE_pHly_Mut_puncta_tot |>
-      dplyr::mutate(Genotype = 'MUT', .before = 1))
-
-Puncta_data <- Puncta_data |>
-  dplyr::full_join(
-    
-    FIRE_pHly_WT_cell_sum |>
-      dplyr::mutate(Genotype = 'WT', .before = 1) |>
-      dplyr::select(-Filename) |>
-      dplyr::full_join(
-        
-        FIRE_pHly_Mut_cell_sum |>
-          dplyr::mutate(Genotype = 'MUT', .before = 1) |>
-          dplyr::select(-Filename)
-        ) |>
-      dplyr::mutate(cell_num = as.character(cell_num))
-    ) %>%
-  dplyr::rename_with(
-    ~gsub(.x,
-          pattern = '^(\\w+)_Mean_Intensity',
-          replacement = 'Intra_Puncta_\\1_Intensity')) %>%
-  dplyr::rename_with(
-    ~gsub(.x,
-          pattern = 'Puncta_Mean_(\\w+)(.+?$)',
-          replacement = 'Cell_Avg_Puncta_\\1\\2'))
-```
-
-# Visualize
-
-**Investigate the distributions of measured variables**
-
-```{r Puncta Area Histogram full, include = T, message = F, warning = F, echo = F, fig.width = 8, fig.height = 8}
+```{r Puncta Area Histogram full, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(GreenRed_Ratio = as.numeric(GreenRed_Ratio),
@@ -1189,23 +83,25 @@ Puncta_data |>
        y = 'Count\n(binwidth = 0.01)') +
   guides(col = 'none', alpha = 'none')+
   theme_bw() +
-  theme(plot.title = element_text(face = 'bold', size = 17),
-        axis.title.x = element_markdown(face = 'bold', size = 15),
-        axis.title.y = element_text(face = 'bold', size = 15),
-        axis.text = element_text(face = 'bold', size = 14),
+  theme(plot.title = element_text(face = 'bold', size = 13),
+        axis.title.x = element_markdown(face = 'bold', size = 11),
+        axis.title.y = element_text(face = 'bold', size = 11),
+        axis.text = element_text(face = 'bold', size = 10),
         axis.ticks = element_line(color = 'black'),
         panel.grid.minor = element_blank(),
         legend.position = c(0.85, 0.5),
-        legend.title = element_text(face = 'bold', size = 14),
-        legend.text = element_text(face = 'bold', size = 14)
+        legend.title = element_text(face = 'bold', size = 10),
+        legend.text = element_text(face = 'bold', size = 10)
   ) +
   scale_color_manual(values = c("navy", "darkgoldenrod3")) +
   scale_fill_manual(values = c("navy", "darkgoldenrod3"))
 ```
 
-**Crop to better-discern differences in the majority of the data**
+#### Puncta Area Histogram (zoom)
 
-```{r Puncta Area Histogram cropped, include = T, message = F, warning = F, echo = F, fig.width = 8, fig.height = 8}
+<span style="color:black;font-size: 16px">Crop to better-discern differences in the majority of the data</span>
+
+```{r Puncta Area Histogram cropped, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(GreenRed_Ratio = as.numeric(GreenRed_Ratio),
@@ -1222,21 +118,23 @@ Puncta_data |>
        y = 'Count\n(binwidth = 0.01)') +
   guides(col = 'none', alpha = 'none')+
   theme_bw() +
-  theme(plot.title = element_text(face = 'bold', size = 17),
-        axis.title.x = element_markdown(face = 'bold', size = 15),
-        axis.title.y = element_text(face = 'bold', size = 15),
-        axis.text = element_text(face = 'bold', size = 14),
+  theme(plot.title = element_text(face = 'bold', size = 13),
+        axis.title.x = element_markdown(face = 'bold', size = 11),
+        axis.title.y = element_text(face = 'bold', size = 11),
+        axis.text = element_text(face = 'bold', size = 10),
         axis.ticks = element_line(color = 'black'),
         panel.grid.minor = element_blank(),
         legend.position = c(0.85, 0.5),
-        legend.title = element_text(face = 'bold', size = 14),
-        legend.text = element_text(face = 'bold', size = 14)
+        legend.title = element_text(face = 'bold', size = 10),
+        legend.text = element_text(face = 'bold', size = 10)
   ) +
   scale_color_manual(values = c("navy", "darkgoldenrod3")) +
   scale_fill_manual(values = c("navy", "darkgoldenrod3"))
 ```
 
-```{r Puncta Area Density full, include = T, message = F, warning = F, echo = F, fig.width = 8, fig.height = 8}
+#### Puncta Area Density
+
+```{r Puncta Area Density full, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(GreenRed_Ratio = as.numeric(GreenRed_Ratio),
@@ -1253,23 +151,25 @@ Puncta_data |>
        y = 'Density') +
   guides(col = 'none', alpha = 'none')+
   theme_bw() +
-  theme(plot.title = element_text(face = 'bold', size = 17),
-        axis.title.x = element_markdown(face = 'bold', size = 15),
-        axis.title.y = element_text(face = 'bold', size = 15),
-        axis.text = element_text(face = 'bold', size = 14),
+  theme(plot.title = element_text(face = 'bold', size = 13),
+        axis.title.x = element_markdown(face = 'bold', size = 11),
+        axis.title.y = element_text(face = 'bold', size = 11),
+        axis.text = element_text(face = 'bold', size = 10),
         axis.ticks = element_line(color = 'black'),
         panel.grid.minor = element_blank(),
         legend.position = c(0.80, 0.5),
-        legend.title = element_text(face = 'bold', size = 15),
-        legend.text = element_text(face = 'bold', size = 15)
+        legend.title = element_text(face = 'bold', size = 11),
+        legend.text = element_text(face = 'bold', size = 11)
   ) +
   scale_color_manual(values = c("navy", "darkgoldenrod3")) +
   scale_fill_manual(values = c("navy", "darkgoldenrod3"))
 ```
 
-**Crop to better-discern differences in the majority of the data**
+#### Puncta Area Density (zoom)
 
-```{r Puncta Area Density cropped, include = T, message = F, warning = F, echo = F, fig.width = 8, fig.height = 8}
+<span style="color:black;font-size: 16px">Crop to better-discern differences in the majority of the data</span>
+
+```{r Puncta Area Density cropped, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(GreenRed_Ratio = as.numeric(GreenRed_Ratio),
@@ -1286,22 +186,23 @@ Puncta_data |>
        y = 'Density') +
   guides(col = 'none', alpha = 'none')+
   theme_bw() +
-  theme(plot.title = element_text(face = 'bold', size = 17),
-        axis.title.x = element_markdown(face = 'bold', size = 15),
-        axis.title.y = element_text(face = 'bold', size = 15),
-        axis.text = element_text(face = 'bold', size = 14),
+  theme(plot.title = element_text(face = 'bold', size = 13),
+        axis.title.x = element_markdown(face = 'bold', size = 11),
+        axis.title.y = element_text(face = 'bold', size = 11),
+        axis.text = element_text(face = 'bold', size = 10),
         axis.ticks = element_line(color = 'black'),
         panel.grid.minor = element_blank(),
         legend.position = c(0.80, 0.5),
-        legend.title = element_text(face = 'bold', size = 15),
-        legend.text = element_text(face = 'bold', size = 15)
+        legend.title = element_text(face = 'bold', size = 11),
+        legend.text = element_text(face = 'bold', size = 11)
   ) +
   scale_color_manual(values = c("navy", "darkgoldenrod3")) +
   scale_fill_manual(values = c("navy", "darkgoldenrod3"))
 ```
 
+#### Puncta Area Violin
 
-```{r Puncta Area Violin, include = T, message = F, warning = F, echo = F, fig.width = 8, fig.height = 8}
+```{r Puncta Area Violin, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(GreenRed_Ratio = as.numeric(GreenRed_Ratio),
@@ -1323,11 +224,11 @@ Puncta_data |>
        y = 'Genotype') +
   guides(col = 'none', alpha = 'none')+
   theme_bw() +
-  theme(plot.title = element_text(face = 'bold', size = 17),
+  theme(plot.title = element_text(face = 'bold', size = 13),
         panel.grid.major.y = element_blank(),
-        axis.title.x = element_markdown(face = 'bold', size = 15),
-        axis.title.y = element_text(face = 'bold', size = 15),
-        axis.text = element_text(face = 'bold', size = 14),
+        axis.title.x = element_markdown(face = 'bold', size = 11),
+        axis.title.y = element_text(face = 'bold', size = 11),
+        axis.text = element_text(face = 'bold', size = 10),
         axis.ticks = element_line(color = 'black'),
         panel.grid.minor = element_blank(),
         legend.position = 'none'
@@ -1336,7 +237,9 @@ Puncta_data |>
   scale_fill_manual(values = c("navy", "darkgoldenrod3"))
 ```
 
-```{r Puncta Acidity Histogram full, include = T, message = F, warning = F, echo = F, fig.width = 8, fig.height = 8}
+#### Puncta Acidity Histogram
+
+```{r Puncta Acidity Histogram full, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(GreenRed_Ratio = as.numeric(GreenRed_Ratio),
@@ -1354,23 +257,25 @@ Puncta_data |>
        y = 'Count\n(binwidth = 0.1)') +
   guides(col = 'none', alpha = 'none')+
   theme_bw() +
-  theme(plot.title = element_text(face = 'bold', size = 17),
-        axis.title.x = element_markdown(face = 'bold', size = 15),
-        axis.title.y = element_text(face = 'bold', size = 15),
-        axis.text = element_text(face = 'bold', size = 14),
+  theme(plot.title = element_text(face = 'bold', size = 13),
+        axis.title.x = element_markdown(face = 'bold', size = 11),
+        axis.title.y = element_text(face = 'bold', size = 11),
+        axis.text = element_text(face = 'bold', size = 10),
         axis.ticks = element_line(color = 'black'),
         panel.grid.minor = element_blank(),
         legend.position = c(0.8, 0.5),
-        legend.title = element_text(face = 'bold', size = 15),
-        legend.text = element_text(face = 'bold', size = 15)
+        legend.title = element_text(face = 'bold', size = 11),
+        legend.text = element_text(face = 'bold', size = 11)
   ) +
   scale_color_manual(values = c("navy", "darkgoldenrod3")) +
   scale_fill_manual(values = c("navy", "darkgoldenrod3"))
 ```
 
-**Crop to better-discern differences in the majority of the data**
+#### Puncta Acidity Histogram (zoom)
 
-```{r Puncta Acidity Histogram cropped, include = T, message = F, warning = F, echo = F, fig.width = 8, fig.height = 8}
+<span style="color:black;font-size: 16px">Crop to better-discern differences in the majority of the data</span>
+
+```{r Puncta Acidity Histogram cropped, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(GreenRed_Ratio = as.numeric(GreenRed_Ratio),
@@ -1388,22 +293,23 @@ Puncta_data |>
        y = 'Count\n(binwidth = 0.1)') +
   guides(col = 'none', alpha = 'none')+
   theme_bw() +
-  theme(plot.title = element_text(face = 'bold', size = 17),
-        axis.title.x = element_markdown(face = 'bold', size = 15),
-        axis.title.y = element_text(face = 'bold', size = 15),
-        axis.text = element_text(face = 'bold', size = 14),
+  theme(plot.title = element_text(face = 'bold', size = 13),
+        axis.title.x = element_markdown(face = 'bold', size = 11),
+        axis.title.y = element_text(face = 'bold', size = 11),
+        axis.text = element_text(face = 'bold', size = 10),
         axis.ticks = element_line(color = 'black'),
         panel.grid.minor = element_blank(),
         legend.position = c(0.8, 0.5),
-        legend.title = element_text(face = 'bold', size = 15),
-        legend.text = element_text(face = 'bold', size = 15)
+        legend.title = element_text(face = 'bold', size = 11),
+        legend.text = element_text(face = 'bold', size = 11)
   ) +
   scale_color_manual(values = c("navy", "darkgoldenrod3")) +
   scale_fill_manual(values = c("navy", "darkgoldenrod3"))
 ```
 
+#### Puncta Acidity Density
 
-```{r Puncta Acidity Density full, include = T, message = F, warning = F, echo = F, fig.width = 8, fig.height = 8}
+```{r Puncta Acidity Density full, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(GreenRed_Ratio = as.numeric(GreenRed_Ratio),
@@ -1420,23 +326,25 @@ Puncta_data |>
        y = 'Density') +
   guides(col = 'none', alpha = 'none')+
   theme_bw() +
-  theme(plot.title = element_text(face = 'bold', size = 17),
-        axis.title.x = element_markdown(face = 'bold', size = 15),
-        axis.title.y = element_text(face = 'bold', size = 15),
-        axis.text = element_text(face = 'bold', size = 14),
+  theme(plot.title = element_text(face = 'bold', size = 13),
+        axis.title.x = element_markdown(face = 'bold', size = 11),
+        axis.title.y = element_text(face = 'bold', size = 11),
+        axis.text = element_text(face = 'bold', size = 10),
         axis.ticks = element_line(color = 'black'),
         panel.grid.minor = element_blank(),
         legend.position = c(0.80, 0.5),
-        legend.title = element_text(face = 'bold', size = 15),
-        legend.text = element_text(face = 'bold', size = 15)
+        legend.title = element_text(face = 'bold', size = 11),
+        legend.text = element_text(face = 'bold', size = 11)
   ) +
   scale_color_manual(values = c("navy", "darkgoldenrod3")) +
   scale_fill_manual(values = c("navy", "darkgoldenrod3"))
 ```
 
-**Crop to better-discern differences in the majority of the data**
+#### Puncta Acidity Density (zoom)
 
-```{r Puncta Acidity Density cropped, include = T, message = F, warning = F, echo = F, fig.width = 8, fig.height = 8}
+<span style="color:black;font-size: 16px">Crop to better-discern differences in the majority of the data</span>
+
+```{r Puncta Acidity Density cropped, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(GreenRed_Ratio = as.numeric(GreenRed_Ratio),
@@ -1453,22 +361,23 @@ Puncta_data |>
        y = 'Density') +
   guides(col = 'none', alpha = 'none')+
   theme_bw() +
-  theme(plot.title = element_text(face = 'bold', size = 17),
-        axis.title.x = element_markdown(face = 'bold', size = 15),
-        axis.title.y = element_text(face = 'bold', size = 15),
-        axis.text = element_text(face = 'bold', size = 14),
+  theme(plot.title = element_text(face = 'bold', size = 13),
+        axis.title.x = element_markdown(face = 'bold', size = 11),
+        axis.title.y = element_text(face = 'bold', size = 11),
+        axis.text = element_text(face = 'bold', size = 10),
         axis.ticks = element_line(color = 'black'),
         panel.grid.minor = element_blank(),
         legend.position = c(0.80, 0.5),
-        legend.title = element_text(face = 'bold', size = 15),
-        legend.text = element_text(face = 'bold', size = 15)
+        legend.title = element_text(face = 'bold', size = 11),
+        legend.text = element_text(face = 'bold', size = 11)
   ) +
   scale_color_manual(values = c("navy", "darkgoldenrod3")) +
   scale_fill_manual(values = c("navy", "darkgoldenrod3"))
 ```
 
+#### Puncta Area and Acidity Contour
 
-```{r Puncta Area and Acidity 2d density full, include = T, message = F, warning = F, echo = F, fig.width = 8, fig.height = 8}
+```{r Puncta Area and Acidity 2d density full, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 5}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(GreenRed_Ratio = as.numeric(GreenRed_Ratio),
@@ -1491,23 +400,25 @@ Puncta_data |>
        fill = 'Genotype') +
   guides(fill = 'none', alpha = 'none')+
   theme_bw() +
-  theme(plot.title = element_text(face = 'bold', size = 17),
-        axis.title.x = element_markdown(face = 'bold', size = 15),
-        axis.title.y = element_text(face = 'bold', size = 14),
-        axis.text = element_text(face = 'bold', size = 13),
+  theme(plot.title = element_text(face = 'bold', size = 13),
+        axis.title.x = element_markdown(face = 'bold', size = 11),
+        axis.title.y = element_text(face = 'bold', size = 10),
+        axis.text = element_text(face = 'bold', size = 9),
         axis.ticks = element_line(color = 'black'),
         panel.grid.minor = element_blank(),
         legend.position = c(0.80, 0.6),
-        legend.title = element_text(face = 'bold', size = 13),
-        legend.text = element_text(face = 'bold', size = 13)
+        legend.title = element_text(face = 'bold', size = 9),
+        legend.text = element_text(face = 'bold', size = 9)
   ) +
   scale_color_manual(values = c("navy", "darkgoldenrod3")) +
   scale_fill_manual(values = c("navy", "darkgoldenrod3"))
 ```
 
-**Crop to better-discern differences in the majority of the data**
+#### Puncta Area and Acidity Contour (zoom)
 
-```{r Puncta Area and Acidity 2d density cropped, include = T, message = F, warning = F, echo = F, fig.width = 8, fig.height = 8}
+<span style="color:black;font-size: 16px">Crop to better-discern differences in the majority of the data</span>
+
+```{r Puncta Area and Acidity 2d density cropped, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 5}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(GreenRed_Ratio = as.numeric(GreenRed_Ratio),
@@ -1530,26 +441,32 @@ Puncta_data |>
        fill = 'Genotype') +
   guides(fill = 'none', alpha = 'none')+
   theme_bw() +
-  theme(plot.title = element_text(face = 'bold', size = 17),
-        axis.title.x = element_markdown(face = 'bold', size = 15),
-        axis.title.y = element_text(face = 'bold', size = 14),
-        axis.text = element_text(face = 'bold', size = 13),
+  theme(plot.title = element_text(face = 'bold', size = 13),
+        axis.title.x = element_markdown(face = 'bold', size = 11),
+        axis.title.y = element_text(face = 'bold', size = 10),
+        axis.text = element_text(face = 'bold', size = 9),
         axis.ticks = element_line(color = 'black'),
         panel.grid.minor = element_blank(),
         legend.position = c(0.80, 0.6),
-        legend.title = element_text(face = 'bold', size = 13),
-        legend.text = element_text(face = 'bold', size = 13)
+        legend.title = element_text(face = 'bold', size = 9),
+        legend.text = element_text(face = 'bold', size = 9)
   ) +
   scale_color_manual(values = c("navy", "darkgoldenrod3")) +
   scale_fill_manual(values = c("navy", "darkgoldenrod3"))
 ```
 
 
-# Statistics
+### Statistics {.tabset .tabset-pills .tabset-fade}
 
-**Perform weighted linear regressions on puncta data to appropriately account for experimenter bias, inter-mouse variability, and (genotypic) inter-puncta variability**
+<span style="color:black;font-size: 16px">Perform weighted linear regressions on puncta data</span>  
 
-### Puncta Acidity
+<span style="color:black;font-size: 18px">It appropriately accounts for:</span>  
+
+* <span style="color:black;font-size: 16px">experimenter bias</span>  
+* <span style="color:black;font-size: 16px">inter-mouse variability</span>  
+* <span style="color:black;font-size: 16px">(genotypic) inter-puncta variability</span>
+
+#### Puncta Acidity
 
 ```{r Puncta Acidity wlm, include = T, message = F, warning = F, echo = F}
 Puncta_avg_acidity <- Puncta_data |>
@@ -1579,7 +496,10 @@ puncta_acidity_lm <- lm(
 summary(puncta_acidity_lm)
 ```
 
-**Check shaprio-wilk**
+<span style="color:navy;font-size: 18px">Strong significant difference between genotypes
+(mutant more alkaline)</span>
+
+<span style="color:black;font-size: 16px">Check shaprio-wilk</span>
 
 ```{r Puncta Acidity Shapiro, include = T, message = F, warning = F, echo = F}
 ## test for normality violations
@@ -1588,9 +508,9 @@ shapiro_puncta_acidity <- shapiro.test(
 
 shapiro.test(summary(puncta_acidity_lm)$residuals |> as.numeric())
 ```
+<span style="color:black;font-size: 18px">Not non-normal</span>
 
-### Puncta Area
-
+#### Puncta Area
 ```{r Puncta Area wlm, include = T, message = F, warning = F, echo = F}
 Puncta_avg_area <- Puncta_data |>
   dplyr::mutate(genotype_puncta_n = NA_real_, .after = Puncta_ID) |>
@@ -1619,7 +539,10 @@ puncta_area_lm <- lm(
 summary(puncta_area_lm)
 ```
 
-**Check shapiro-wilk**
+<span style="color:black;font-size: 18px">No significant difference between genotypes in
+auto-detected puncta in terms of their areas</span>
+
+<span style="color:black;font-size: 16px">Check shapiro-wilk</span>
 
 ```{r Puncta Area Shapiro, include = T, message = F, warning = F, echo = F}
 ## test for normality violations
@@ -1629,8 +552,9 @@ shapiro_puncta_area <- shapiro.test(
 shapiro.test(summary(puncta_area_lm)$residuals |> as.numeric())
 ```
 
-### Puncta Number
+<span style="color:black;font-size: 18px">Not non-normal</span>
 
+#### Puncta Number (wlm)
 ```{r Puncta Number wlm, include = T, message = F, warning = F, echo = F}
 Puncta_n <- Puncta_data |>
   dplyr::mutate(genotype_puncta_n = NA_real_, .after = Puncta_ID) |>
@@ -1651,7 +575,35 @@ puncta_n_lm <- lm(
 summary(puncta_n_lm)
 ```
 
-**Check shapiro-wilk**
+<span style="color:black;font-size: 18px">No significant difference between genotypes</span>
+
+#### Puncta Number (Welch's t)
+```{r Puncta number Welchs t, include = T, message = F, warning = F, echo = T}
+## more traditional Welch's t
+t.test(
+  x = c(Puncta_data |>
+          dplyr::group_by(Genotype) |>
+          dplyr::distinct(Puncta_Count) |>
+          dplyr::ungroup() |>
+          dplyr::filter(Genotype == "WT") |>
+          dplyr::select(Puncta_Count) |>
+          unlist() |> as.numeric()
+),
+y = c(Puncta_data |>
+          dplyr::group_by(Genotype) |>
+          dplyr::distinct(Puncta_Count) |>
+          dplyr::ungroup() |>
+          dplyr::filter(Genotype == "MUT") |>
+          dplyr::select(Puncta_Count) |>
+          unlist() |> as.numeric()
+),
+alternative = 'two.sided', var.equal = F
+)
+```
+<span style="color:black;font-size: 18px">No significant difference between genotype-dependent
+puncta number auto-detected by computer software</span>
+
+<span style="color:black;font-size: 16px">Check shapiro-wilk</span>
 
 ```{r Puncta Number Shapiro, include = T, message = F, warning = F, echo = F}
 ## test for normality violations
@@ -1661,8 +613,9 @@ shapiro_puncta_n <- shapiro.test(
 shapiro.test(summary(puncta_n_lm)$residuals |> as.numeric())
 ```
 
-### Cell Body Area
+<span style="color:black;font-size: 18px">Not non-normal</span>
 
+#### Cell Body Area
 ```{r Cell Body Area lm, include = T, message = F, warning = F, echo = T}
   ## Welch's t test
 t.test(x = c(Puncta_data |>
@@ -1684,7 +637,12 @@ y = c(Puncta_data |>
 alternative = 'two.sided', var.equal = F)
 ```
 
-**Check shapiro-wilk**
+<span style="color:darkred;font-size: 18px">Mutant cell bodies are significantly larger than
+wild-type cell bodies; this is likely due to sampling bias and likely does not
+relate to pH-dependent results since those are weighted by the number of puncta,
+which is not significantly different</span>
+
+<span style="color:black;font-size: 16px">Check shapiro-wilk</span>
 
 ```{r Cell Body Area Shapiro, include = T, message = F, warning = F, echo = T}
   ## Examine residuals
@@ -1702,9 +660,15 @@ shapiro_cell_area <- shapiro.test(
 shapiro.test(summary(cell_area_lm)$residuals |> as.numeric())
 ```
 
-**Significant. Show the residuals**
+<span style="color:darkred;font-size: 18px">Non-normal residuals, suggesting cell body size
+difference is difficult to properly discern a significant difference due to
+outliers or, more broadly, differently-distributed cell body areas. This is
+obvious and, again, not necessarily relevant</span>
 
-```{r Cell Body Area lm residuals dist, include = T, message = F, warning = F, echo = T}
+<span style="color:black;font-size: 16px">Significant. Show the residuals</span>
+
+#### Cell Body Area residuals dist
+```{r Cell Body Area lm residuals dist, include = T, message = F, warning = F, echo = T, fig.width = 6, fig.height = 4}
   ## Cell Body area residuals distributions
 Puncta_data |>
   dplyr::group_by(Genotype, cell_num) |>
@@ -1745,31 +709,42 @@ Puncta_data |>
        x = 'lm fit residuals',
        y = 'Genotype') +
   theme_bw() +
-  theme(title = element_text(face = 'bold', size = 17),
-        axis.title = element_text(face = 'bold', size = 15),
-        axis.text = element_text(face = 'bold', size = 15),
+  theme(title = element_text(face = 'bold', size = 13),
+        axis.title = element_text(face = 'bold', size = 11),
+        axis.text = element_text(face = 'bold', size = 11),
         panel.grid = element_blank(),
-        legend.text = element_text(face = 'bold', size = 14)
+        legend.text = element_text(face = 'bold', size = 10)
   ) +
   guides(alpha = 'none') +
   scale_color_manual(values = c('navy', 'darkgoldenrod3')) +
   scale_fill_manual(values = c('navy', 'darkgoldenrod3'))
 ```
 
-**What's the shape of the dv?**
+<span style="color:darkred;font-size: 18px">The residual average cell body size for each mouse is
+not the same between genotypes</span>
 
+<span style="color:black;font-size: 16px">What's the shape of the dv, taking both genotypes into account?</span>
+
+#### Cell Body Area density
 ```{r Cell Body Area density, include = T, message = F, warning = F, echo = T}
 Puncta_data |> dplyr::distinct(Cell_Body_Area) |> 
   ggplot(aes(x = as.numeric(Cell_Body_Area))) +
   geom_density(fill = 'black', alpha = 0.5) +
-  labs(x = paste0('Cell Body Area (', '\U03BCm^2', ')'))
-
+  labs(x = expression(paste("Cell Body Area (", mu, m^2, ")")))
 ```
 
-Consider a `glm` with an **inverse-Gaussian fit**,
-`Komolgorov-Smirnov`,
-or` Wilcon-rank sum (Mann Whitney)`
+<span style="color:darkred;font-size: 18px">Negative binomial. Unsurprising, particularly for
+small sample sizes; the borderline difference suggests the sample sizes are
+nearly powerful enough</span>
 
+
+<span style="color:black;font-size: 18px">Still, consider alternatives:</span> 
+
+* <span style="color:black;font-size: 16px">a `glm` with an **inverse-Gaussian fit** (probably the appropriate alternative)</span>  
+* <span style="color:black;font-size: 16px">`Wilcoxon-ranked sum (Mann-Whitney)` (probably the next appropriate alternative)</span>  
+* <span style="color:black;font-size: 16px">`Komolgorov-Smirnov`</span>  
+
+<span style="color:black;font-size: 16px">First, the `glm`</span>
 ```{r Cell Body Area glm, include = T, message = F, warning = F, echo = T}
   ## GLM
 cell_area_glm <- glm(data = Puncta_data |>
@@ -1782,7 +757,39 @@ cell_area_glm <- glm(data = Puncta_data |>
 summary(cell_area_glm)
 ```
 
-```{r Cell Body Area KS test, include = F, message = F, warning = F, echo = T}
+<span style="color:navy;font-size: 18px">No significant difference between genotypes when
+using a `glm` with an **inverse-Gaussian** to account for different (non-normal)
+distribution shapes</span>
+
+
+<span style="color:black;font-size: 18px">What about the `MannWhitney`/`Wilcoxon-ranked sum`?</span>    
+
+* <span style="color:black;font-size: 16px">Compares the medians of two groups because the data violate assumptions
+(such as normality, as in this case)</span>  
+* <span style="color:black;font-size: 16px">often, "outliers" skew distributions and/or unequal variances between groups</span>
+
+```{r Cell Body Area MannWhitney, include = T, message = F, warning = F, echo = T}
+wilcox.test(data = Puncta_data |>
+              dplyr::group_by(Genotype, cell_num) |>
+              dplyr::distinct(Cell_Body_Area) |>
+              dplyr::ungroup(),
+            as.numeric(Cell_Body_Area) ~ Genotype)
+```
+
+<span style="color:darkred;font-size: 18px">Significant difference between the genotypes. Not
+sure how this contributes to pH difference in endolysosomes marked by the
+FIREpHly marker (Lamp1)</span>
+
+
+<span style="color:black;font-size: 18px">What about the `Kolmogorov-Smirnov`?</span>
+
+* <span style="color:black;font-size: 16px">`KS test` does *not* assume the sample means of two groups come from the same 
+distribution (a more conservative, non-parametric test)</span>
+
+
+<span style="color:black;font-size: 16px">We assume this in genetic studies (hence the `glm`)</span>
+
+```{r Cell Body Area KS test, include = T, message = F, warning = F, echo = T}
   ## KS
 ks.test(x = c(Puncta_data |>
                 dplyr::group_by(Genotype, cell_num) |>
@@ -1803,18 +810,19 @@ ks.test(x = c(Puncta_data |>
         alternative = 'two.sided')
 ```
 
-```{r Cell Body Area MannWhitney, include = F, message = F, warning = F, echo = T}
-wilcox.test(data = Puncta_data |>
-              dplyr::group_by(Genotype, cell_num) |>
-              dplyr::distinct(Cell_Body_Area) |>
-              dplyr::ungroup(),
-            as.numeric(Cell_Body_Area) ~ Genotype)
-```
+<span style="color:darkred;font-size: 18px">Significant difference between the genotypes.</span>
 
-**Is there a relationship between cell body size and puncta size?**
-**Do the genotypes differ?**
 
-```{r Cell Body Area Scatter w lm fit, include = T, message = F, warning = F, echo = F, fig.width = 8, fig.height = 8}
+<span style="color:black;font-size: 18px">Defer to GraphPad Prism statistical results, though I am satisfied by the `glm`
+with the inverse-Gaussian fit; again, this is a minor issue, though I will note
+it here</span>
+
+<span style="color:black;font-size: 16px">Is there a relationship between cell body size and puncta size?</span>
+<span style="color:black;font-size: 16px">Do the genotypes differ? (see below)</span>
+
+#### Cell Body Area vs Avg Puncta Area scatter w/fit
+
+```{r Cell Body Area Scatter w lm fit, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(
@@ -1842,14 +850,14 @@ Puncta_data |>
        fill = 'Genotype') +
   guides(alpha = 'none')+
   theme_bw() +
-  theme(plot.title = element_text(face = 'bold', size = 17),
-        axis.title.x = element_markdown(face = 'bold', size = 15),
-        axis.title.y = element_markdown(face = 'bold', size = 15),
-        axis.text = element_text(face = 'bold', size = 13),
+  theme(plot.title = element_text(face = 'bold', size = 13),
+        axis.title.x = element_markdown(face = 'bold', size = 11),
+        axis.title.y = element_markdown(face = 'bold', size = 11),
+        axis.text = element_text(face = 'bold', size = 9),
         axis.ticks = element_line(color = 'black'),
         panel.grid.minor = element_blank(),
-        legend.title = element_text(face = 'bold', size = 15),
-        legend.text = element_text(face = 'bold', size = 15)
+        legend.title = element_text(face = 'bold', size = 11),
+        legend.text = element_text(face = 'bold', size = 11)
   ) +
   scale_color_manual(values = c("navy", "darkgoldenrod3")) +
   scale_fill_manual(values = c("navy", "darkgoldenrod3")) +
@@ -1878,11 +886,39 @@ Puncta_data |>
     method = 'lm', se = F)
 ```
 
-# Stats Plots
+#### Cell Body Area vs Avg Puncta Area summary
 
-**Visualize the statistical test results**
+```{r Cell Body and Genotype Do Not Predict Avg Puncta Area, include = T, message = F, warning = F, echo = T}
+summary(lm(data = Puncta_data |>
+     as.data.frame() |>
+     dplyr::mutate(
+       Puncta_Area = as.numeric(Puncta_Area),
+       Cell_Body_Area = as.numeric(Cell_Body_Area),
+       cell_num = as.numeric(cell_num)) |>
+     dplyr::group_by(Genotype, cell_num) |>
+     dplyr::mutate(mean_Puncta_Area = mean(Puncta_Area)) |>
+     dplyr::distinct(Cell_Body_Area, mean_Puncta_Area) |>
+     dplyr::ungroup(),
+   
+   formula = mean_Puncta_Area ~ 
+     Cell_Body_Area*Genotype
+     ))
+```
 
-```{r Puncta Acidity Bar, include = T, message = F, warning = F, echo = F, fig.width = 8, fig.height = 8}
+<span style="color:black;font-size: 18px">No clear relationship between average puncta area
+and cell body area between the two genotypes (though, mutants have larger cell
+bodies)</span>
+
+<span style="color:black;font-size: 16px">Thus, mutant endolysosomal cell bodies may be significantly larger; however,
+there is no difference in the puncta size between the two genotypes</span>
+
+### Stats Plots {.tabset .tabset-pills .tabset-fade}
+
+<span style="color:black;font-size: 16px">Visualize the statistical test results</span>
+
+#### Puncta Acidity Bar
+
+```{r Puncta Acidity Bar, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 puncta_acidity_lm$model$Genotype |>
   as.data.frame() |>
   dplyr::slice(c(1,14)) |>
@@ -1938,11 +974,11 @@ ggplot(aes(
        x = 'Genotype',
        y = 'Weighted Cell Average Puncta Acidity (a.u.)') +
   theme_bw() +
-  theme(title = element_text(face = 'bold', size = 17),
-        axis.title = element_text(face = 'bold', size = 15),
-        axis.text = element_text(face = 'bold', size = 15),
+  theme(title = element_text(face = 'bold', size = 13),
+        axis.title = element_text(face = 'bold', size = 11),
+        axis.text = element_text(face = 'bold', size = 11),
         panel.grid = element_blank(),
-        legend.text = element_text(face = 'bold', size = 14)
+        legend.text = element_text(face = 'bold', size = 10)
         ) +
   guides(alpha = 'none') +
   scale_color_manual(values = c('navy', 'darkgoldenrod3')) +
@@ -1965,7 +1001,9 @@ ggplot(aes(
     y = 2.1)
 ```
 
-```{r Puncta Area Bar, include = T, message = F, warning = F, echo = F, fig.width = 8, fig.height = 8}
+#### Puncta Area Bar
+
+```{r Puncta Area Bar, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 ## puncta area
 puncta_area_lm$model$Genotype |>
   as.data.frame() |>
@@ -2016,11 +1054,11 @@ puncta_area_lm$model$Genotype |>
        y = bquote('Weighted Cell Average Puncta Area '(mu*m^2)),
        ) +
   theme_bw() +
-  theme(title = element_text(face = 'bold', size = 17),
-        axis.title = element_text(face = 'bold', size = 15),
-        axis.text = element_text(face = 'bold', size = 15),
+  theme(title = element_text(face = 'bold', size = 13),
+        axis.title = element_text(face = 'bold', size = 11),
+        axis.text = element_text(face = 'bold', size = 11),
         panel.grid = element_blank(),
-        legend.text = element_text(face = 'bold', size = 14)
+        legend.text = element_text(face = 'bold', size = 10)
   ) +
   guides(alpha = 'none') +
   scale_color_manual(values = c('navy', 'darkgoldenrod3')) +
@@ -2046,7 +1084,9 @@ puncta_area_lm$model$Genotype |>
   y = 0.85)
 ```
 
-```{r Puncta Number Bar, include = T, message = F, warning = F, echo = F, fig.width = 8, fig.height = 8}
+#### Puncta Number Bar
+
+```{r Puncta Number Bar, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 puncta_n_lm$model$Genotype |>
   as.data.frame() |>
   dplyr::slice(c(1,14)) |>
@@ -2099,11 +1139,11 @@ puncta_n_lm$model$Genotype |>
        y = 'Weighted Cell Average Puncta Number',
   ) +
   theme_bw() +
-  theme(title = element_text(face = 'bold', size = 17),
-        axis.title = element_text(face = 'bold', size = 15),
-        axis.text = element_text(face = 'bold', size = 15),
+  theme(title = element_text(face = 'bold', size = 13),
+        axis.title = element_text(face = 'bold', size = 11),
+        axis.text = element_text(face = 'bold', size = 11),
         panel.grid = element_blank(),
-        legend.text = element_text(face = 'bold', size = 14)
+        legend.text = element_text(face = 'bold', size = 10)
   ) +
   guides(alpha = 'none') +
   scale_color_manual(values = c('navy', 'darkgoldenrod3')) +
@@ -2126,7 +1166,9 @@ puncta_n_lm$model$Genotype |>
   y = 32)
 ```
 
-```{r Cell Body Area Welch Bar, include = T, message = F, warning = F, echo = F, fig.width = 8, fig.height = 8}
+#### Cell Body Area Bar (Welch's t)
+
+```{r Cell Body Area Welch Bar, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 cell_area_lm$model$Genotype |>
   as.data.frame() |>
   dplyr::slice(c(1,14)) |>
@@ -2175,11 +1217,11 @@ cell_area_lm$model$Genotype |>
        x = 'Genotype',
        y = bquote('Cell Body Area '(mu*m^2))) +
   theme_bw() +
-  theme(title = element_text(face = 'bold', size = 17),
-        axis.title = element_text(face = 'bold', size = 15),
-        axis.text = element_text(face = 'bold', size = 15),
+  theme(title = element_text(face = 'bold', size = 13),
+        axis.title = element_text(face = 'bold', size = 11),
+        axis.text = element_text(face = 'bold', size = 11),
         panel.grid = element_blank(),
-        legend.text = element_text(face = 'bold', size = 14)
+        legend.text = element_text(face = 'bold', size = 10)
   ) +
   guides(alpha = 'none') +
   scale_color_manual(values = c('navy', 'darkgoldenrod3')) +
@@ -2205,7 +1247,9 @@ cell_area_lm$model$Genotype |>
     y = 410)
 ```
 
-```{r Cell Body Area Gamma Bar, include = T, message = F, warning = F, echo = F, fig.width = 8, fig.height = 8}
+#### Cell Body Area Bar (glm)
+
+```{r Cell Body Area Gamma Bar, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 cell_area_glm$model$Genotype |>
   as.data.frame() |>
   dplyr::slice(c(1,14)) |>
@@ -2266,16 +1310,16 @@ cell_area_glm$model$Genotype |>
        x = 'Genotype',
        y = bquote('Cell Body Area '(mu*m^2))) +
   theme_bw() +
-  theme(title = element_text(face = 'bold', size = 17),
-        axis.title = element_text(face = 'bold', size = 15),
-        axis.text = element_text(face = 'bold', size = 15),
+  theme(title = element_text(face = 'bold', size = 12.5),
+        axis.title = element_text(face = 'bold', size = 11),
+        axis.text = element_text(face = 'bold', size = 11),
         panel.grid = element_blank(),
-        legend.text = element_text(face = 'bold', size = 14)
+        legend.text = element_text(face = 'bold', size = 10)
   ) +
   guides(alpha = 'none') +
   scale_color_manual(values = c('navy', 'darkgoldenrod3')) +
   scale_fill_manual(values = c('navy', 'darkgoldenrod3')) +
-  geom_segment(x = 1, xend = 2, y = 400, yend = 400, color = 'black', size = 1) +
+  geom_segment(x = 1, xend = 2, y = 385, yend = 385, color = 'black', size = 1) +
   # geom_signif()
   geom_text(
     aes(label = "N.S.",
@@ -2293,24 +1337,19 @@ cell_area_glm$model$Genotype |>
     y = 412)
 ```
 
-# Results Tables
+### Results Tables {.tabset .tabset-pills .tabset-fade}
 
-### Tidied Puncta Data
+#### Tidied Puncta Data
 
 ```{r Puncta Data, include = T, message = F, warning = F, echo = F}
-DT::datatable(Puncta_data, width = '50%')
+Puncta_data %>%
+  dplyr::rename_with(.cols = dplyr::contains("_"), ~gsub(.x, pattern = '^(.+?)(.+$)', replacement = '`\\1\\2`')) %>%
+  dplyr::rename_with(.cols = dplyr::contains('_'),~gsub(.x, pattern = '_', replacement = ' ')) %>%
+  dplyr::rename_with(.cols = dplyr::contains("Puncta Count"), ~gsub(.x, pattern = 'Puncta Count', replacement = '#')) %>%
+  dplyr::mutate(across(c(4:ncol(.)), ~ as.numeric(.x))) %>%
+  dplyr::mutate(across(c(4:ncol(.)), ~ round(.x, digits = 4))) |> 
+  head()
 ```
-
-```{r Export puncta data, include=F, warning =F, message =F, echo = F}
-write.table(
-  Puncta_data,
-  'C:\\Users\\Erik\\Desktop\\Programming\\R\\Bio\\Endo\\tidied_puncta_data.csv',
-  row.names = F,
-  col.names = T,
-  sep = ',')
-```
-
-### Stats Results
 
 ```{r Gather Stats Results, include = T, message = F, warning = F, echo = F}
 puncta_acidity_lm_results <- puncta_acidity_lm |>
@@ -2357,11 +1396,20 @@ lm_results <- puncta_acidity_lm_results |>
   dplyr::full_join(cell_area_glm_results |> 
                      dplyr::mutate(target_var = 'cell_body_area_glm')) |>
   dplyr::relocate(target_var, .before = 1)
-
-DT::datatable(lm_results, width = '50%')
 ```
 
-```{r Gather predictions weights and residuals, include = T, message = F, warning=F, echo = T}
+#### Table of Stats
+
+```{r Model results table, include = T, message = F, warning = F, echo = F}
+lm_results %>%
+  dplyr::mutate(across(c(3:ncol(.)), ~as.numeric(.x))) %>% 
+  dplyr::mutate(across(c(3:ncol(.)), ~round(.x, digits = 5))) |> 
+  head()
+```
+
+#### Table of Predicted Values
+
+```{r Gather predictions weights and residuals, eval = T, include = F, message = F, warning=F, echo = T}
 lm_results_preds_and_resids <- puncta_acidity_lm |> 
   broom::augment() |> 
   dplyr::mutate(target_var = 'puncta_acidity') |>
@@ -2388,11 +1436,18 @@ lm_results_preds_and_resids <- puncta_acidity_lm |>
                    ) |>
   dplyr::relocate(1, .after = target_var) |>
   dplyr::relocate(.resid, .after = .fitted)
-
-DT::datatable(lm_results_preds_and_resids, width = '50%')
 ```
 
-```{r Gather shapiro results, include = T, message = F, warning = F, echo = T}
+```{r Predictions in table, eval = T, include = T, message = F, warning = F, echo = T}
+lm_results_preds_and_resids %>%
+  dplyr::mutate(across(c(2:ncol(.),-9), ~ as.numeric(.x))) %>%
+  dplyr::mutate(across(c(2:ncol(.),-9), ~ round(.x, digits = 4))) |> 
+  head()
+```
+
+#### Shapiro Results Table
+
+```{r Gather shapiro results, eval = T, include = F, message = F, warning = F, echo = T}
 shapiro_test_results <- shapiro_puncta_acidity |>
   broom::tidy() |>
   dplyr::full_join(shapiro_puncta_acidity |>
@@ -2417,7 +1472,11 @@ shapiro_test_results <- shapiro_puncta_acidity |>
                      dplyr::full_join(shapiro_puncta_n |>
                                         broom::glance()) |> dplyr::mutate(
                                           target_var = 'puncta_n'))
+```
 
-DT::datatable(shapiro_test_results, width = '50%')
+```{r Shapiro results table, include = T, message = F, warning = F, echo = T}
+shapiro_test_results %>%
+  dplyr::mutate(across(c(1:2), ~ round(.x, digits = 4))) |> 
+  head()
 ```
 

@@ -1,30 +1,49 @@
----
-title: "IPMS vignette"
-author: "Erik Larsen"
-date: "2025-01-22"
-output:
-  html_document:
-    fig_width: 10
-    fig_height: 10
-    toc: TRUE
-    dev: jpeg
----
+IPMS vignette
+================
+Erik Larsen
+2025-01-22
+
+- [Overview](#overview)
+- [Set up Environment](#set-up-environment)
+- [Wrangle the TSC Data](#wrangle-the-tsc-data)
+- [Filter Wrangled IPMS Counts Data](#filter-wrangled-ipms-counts-data)
+  - [Apply filtering to TSCs](#apply-filtering-to-tscs)
+- [Upload GO Results](#upload-go-results)
+  - [Cell Component Results](#cell-component-results)
+  - [Biological Process Results](#biological-process-results)
+  - [Molecular Function Results](#molecular-function-results)
+  - [Combine the Results](#combine-the-results)
+- [Integrate with Custom GO Query
+  Function](#integrate-with-custom-go-query-function)
+  - [Query Bioconductor and GO dbs](#query-bioconductor-and-go-dbs)
+  - [Integrate Query Results into Counts
+    DF](#integrate-query-results-into-counts-df)
+- [Plot Results](#plot-results)
+  - [Plot Full Scatter](#plot-full-scatter)
+  - [vATPase Scatter (zoom)](#vatpase-scatter-zoom)
+  - [Regulation of Macroautophagy
+    (zoom)](#regulation-of-macroautophagy-zoom)
+  - [Protein Transport (zoom)](#protein-transport-zoom)
+  - [GO Bar Plot](#go-bar-plot)
+  - [GO CC Bar Plot](#go-cc-bar-plot)
+  - [GO BP Bar Plot](#go-bp-bar-plot)
 
 ## Overview
 
-This markdown was developed to formally document the data analysis pipeline for 
-TMEM184B immunoprecipitation tandem mass-spec experiments for 
-**Dr. Martha Bhattacharya's lab** at the **University of Arizona** for the
-endolysosomal paper under revision (2025-02-28) for the Journal of Cell Science
+This markdown was developed to formally document the data analysis
+pipeline for TMEM184B immunoprecipitation tandem mass-spec experiments
+for **Dr. Martha Bhattacharya’s lab** at the **University of Arizona**
+for the endolysosomal paper under revision (2025-02-28) for the Journal
+of Cell Science
 
-Until a container is built, the `R version` used was **R 4.3.2** with the
-packages installed below
+Until a container is built, the `R version` used was **R 4.3.2** with
+the packages installed below
 
-## Set up Environment {.tabset .tabset-pills .tabset-fade}
+## Set up Environment
 
 Attach packages
 
-```r
+``` r
 packages <- c('TMEM', 'Endo', 'ggplot2', 'rstatix', 'forcats', 'knitr')
 
 for (package in packages) {
@@ -35,19 +54,19 @@ for (package in packages) {
 }
 ```
 
-Load the IPMS TSC "raw" data
+Load the IPMS TSC “raw” data (label-free spectral counts file of 8 samples)
 
-```r
+``` r
 data("IPMS_counts")
 ALL_DF <- IPMS_counts
 rm(IPMS_counts)
 ```
 
-## Wrangle the TSC Data {.tabset .tabset-pills .tabset-fade}
+## Wrangle the TSC Data
 
 Break the original wrangling call into commented chunks for clarity
 
-```r
+``` r
 ALL_DF <- ALL_DF |> 
   dplyr::select(-1) |> ## remove empty column
   dplyr::rename_with(
@@ -94,7 +113,7 @@ ALL_DF <- ALL_DF |>
                 ) # rename the V5 columns by replacing hyphens with _'s
 ```
 
-```r
+``` r
 ALL_DF <- ALL_DF |>
   dplyr::mutate(
     HumanGeneID = stringr::str_extract(
@@ -126,7 +145,7 @@ ALL_DF <- ALL_DF |>
     )
 ```
 
-```r
+``` r
 ALL_DF <- ALL_DF |> 
   dplyr::mutate(
     
@@ -169,13 +188,13 @@ ALL_DF <- ALL_DF |>
   dplyr::arrange(desc(avgFC)) # sort by grand FC from highest to lowest)
 ```
 
-## Filter Wrangled IPMS Counts Data {.tabset .tabset-pills .tabset-fade}
+## Filter Wrangled IPMS Counts Data
 
-Filter using aggressive heuristics Dr. Paul Langlais
-(University of Arizona College of Molecular Medicine Proteomics;
-personal communication)
+Filter using aggressive heuristics; supported by Dr. Paul Langlais (University of
+Arizona College of Molecular Medicine Proteomics; personal
+communication)
 
-```r
+``` r
 Compiled_Candidate_List <- ALL_DF |>
   dplyr:::arrange(desc(avgFC)) |>
   dplyr::filter(
@@ -220,15 +239,15 @@ Compiled_Candidate_List <- ALL_DF |>
   unlist() |> as.character()
 ```
 
-Import CRAPome results (load from Endo package)
+Import CRAPome results (load from the `Endo` package)
 
-```r
+``` r
 data("CRAPome_results")
 ```
 
 Wrangle CRAPome results
 
-```r
+``` r
 Crapome_results <- CRAPome_results |>
   dplyr::filter(!grepl(Mapped, pattern = '/|identifier')) |>
   dplyr::select(1:7) |>
@@ -243,9 +262,9 @@ Crapome_results <- CRAPome_results |>
 rm(CRAPome_results)
 ```
 
-Identify proteins in **> 5%** of CRAPome studies and remove them
+Identify proteins in **\> 5%** of CRAPome studies and remove them
 
-```r
+``` r
 Crapome_hits <- Crapome_results |>
   dplyr::filter(Num_Exp_Found <= 35.8) |> # fewer than 5% of experiments
   dplyr::select(Mapped_Gene_Symbol) |>
@@ -257,7 +276,7 @@ Crapome_hits <- Crapome_results |>
 
 Use CRAPome list to annotate the TSC data
 
-```r
+``` r
 ALL_DF_filtered <- ALL_DF |>
   dplyr::mutate(poi = 'Background', .after = MouseGeneID) |>
   dplyr::full_join(Crapome_hits |>
@@ -274,15 +293,15 @@ ALL_DF_filtered <- ALL_DF |>
   dplyr::select(-Crapome_hits)
 ```
 
-## Upload GO Results {.tabset .tabset-pills .tabset-fade}
+## Upload GO Results
 
 Upload the result `.txt` files from the `geneontology.org` query
 
 ### Cell Component Results
 
-Load and wrangle cell components gene ontology results (in Endo package)
+Load and wrangle cell components gene ontology results (in `Endo` package)
 
-```r
+``` r
 data("GO_CC_results")
 
 GO_CC_results <- GO_CC_results |> 
@@ -336,9 +355,10 @@ GO_CC_results <- GO_CC_results |>
 
 ### Biological Process Results
 
-Load and wrangle biological process gene ontology results (in Endo package)
+Load and wrangle biological process gene ontology results (in `Endo`
+package)
 
-```r
+``` r
 data("GO_BP_results")
 
 GO_BP_results <- GO_BP_results |> 
@@ -392,9 +412,10 @@ GO_BP_results <- GO_BP_results |>
 
 ### Molecular Function Results
 
-Load and wrangle molecular function gene ontology results (in Endo package)
+Load and wrangle molecular function gene ontology results (in `Endo`
+package)
 
-```r
+``` r
 data("GO_MF_results")
 
 GO_MF_results <- GO_MF_results |> 
@@ -447,31 +468,31 @@ GO_MF_results <- GO_MF_results |>
 
 ### Combine the Results
 
-```r
+``` r
 GO_results <- GO_BP_results |>
   dplyr::full_join(GO_CC_results) |>
   dplyr::full_join(GO_MF_results) |>
   dplyr::filter(!grepl(GO_Term, pattern = 'unclassified', ignore.case = T))
 ```
 
-## Integrate with Custom GO Query Function {.tabset .tabset-pills .tabset-fade}
+## Integrate with Custom GO Query Function
 
-Call a custom function created to aggregate all GO information for a provided
-list of gene/protein identifiers
+Call a custom function (`TMEM` package) created to aggregate all GO information
+for a provided list of gene/protein identifiers
 
-  + queries both `Bioconductor` and `GO` dbs
+- queries both `Bioconductor` and `GO` dbs
 
 ### Query Bioconductor and GO dbs
 
 Use the `TMEM` package query function to acquire `GO` info for plotting
 
-```r
+``` r
 x <- TMEM::get_GO_info(list_of_interest = Crapome_hits, species = 'human')
 ```
 
 ### Integrate Query Results into Counts DF
 
-```r
+``` r
 GO_info_by_term_df_sig <- GO_results |>
   dplyr::mutate(db = 'geneontology.org') |>
   dplyr::full_join(x$GO_info_by_term_df |> 
@@ -493,15 +514,15 @@ GO_info_by_term_df_sig <- GO_results |>
   ) # create a statistical significance column for filtering/annotation
 ```
 
-## Plot Results {.tabset .tabset-pills .tabset-fade}
+## Plot Results
 
 Create DFs for each plot
 
 ### Plot Full Scatter
 
-+ Full overview
+- Full overview
 
-```r
+``` r
 ## redefine protiens of interest for labeling (control baits)
 ALL_DF_filtered_full <- ALL_DF_filtered |>
   dplyr::mutate(
@@ -514,7 +535,7 @@ ALL_DF_filtered_full <- ALL_DF_filtered |>
     ) # full scatter
 ```
 
-```r
+``` r
 ggplot(data = ALL_DF_filtered_full) +
   geom_point(data = subset(ALL_DF_filtered_full,
                            poi == 'Background'),
@@ -575,13 +596,13 @@ ggplot(data = ALL_DF_filtered_full) +
         )
 ```
 
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/Full%20Scatter-1.jpeg)<!-- -->
+![](https://github.com/eriklarsen4/Endo/blob/dev/IPMS_plots/Full%20Scatter-1.jpeg)<!-- -->
 
 ### vATPase Scatter (zoom)
 
-+ vATPase hits
+- vATPase hits
 
-```r
+``` r
 ALL_DF_filtered_vATPASE_acidification <- ALL_DF_filtered |> 
   dplyr::mutate(poi = dplyr::case_when(
     
@@ -601,7 +622,7 @@ ALL_DF_filtered_vATPASE_acidification <- ALL_DF_filtered |>
       poi)) # vATPase scatter
 ```
 
-```r
+``` r
 ggplot(data = ALL_DF_filtered_vATPASE_acidification) +
   
   geom_point(data = subset(
@@ -671,13 +692,13 @@ ggplot(data = ALL_DF_filtered_vATPASE_acidification) +
   )
 ```
 
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/vATPase%20Scatter%20zoom-1.jpeg)<!-- -->
+![](https://github.com/eriklarsen4/Endo/blob/dev/IPMS_plots/vATPase%20Scatter%20zoom-1.jpeg)<!-- -->
 
 ### Regulation of Macroautophagy (zoom)
 
-+ Macroautophagy hits
+- Macroautophagy hits
 
-```r
+``` r
 ALL_DF_filterd_reg_macro <- ALL_DF_filtered |>
   dplyr::mutate(poi = dplyr::case_when(
     
@@ -697,7 +718,7 @@ ALL_DF_filterd_reg_macro <- ALL_DF_filtered |>
     ) # regulation of macroautophagy
 ```
 
-```r
+``` r
 ggplot(data = ALL_DF_filterd_reg_macro) +
   
   geom_point(data = subset(
@@ -758,13 +779,14 @@ ggplot(data = ALL_DF_filterd_reg_macro) +
         legend.position = c(0.75, 0.3)
   )
 ```
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/Macro%20zoom-1.jpeg)<!-- -->
+
+![](https://github.com/eriklarsen4/Endo/blob/dev/IPMS_plots/Macro%20zoom-1.jpeg)<!-- -->
 
 ### Protein Transport (zoom)
 
-+ Intracellular protein transport hits
+- Intracellular protein transport hits
 
-```r
+``` r
 ALL_DF_filterd_IC_protein_transport <- ALL_DF_filtered |>
   dplyr::mutate(
     poi = dplyr::case_when(
@@ -779,7 +801,7 @@ ALL_DF_filterd_IC_protein_transport <- ALL_DF_filtered |>
       poi)) # protein transport
 ```
 
-```r
+``` r
 ggplot(data = ALL_DF_filterd_IC_protein_transport) +
   
   geom_point(data = subset(ALL_DF_filterd_IC_protein_transport,
@@ -836,11 +858,12 @@ ggplot(data = ALL_DF_filterd_IC_protein_transport) +
         legend.position = c(0.78, 0.4)
   )
 ```
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/IC%20transport%20zoom-1.jpeg)<!-- -->
+
+![](https://github.com/eriklarsen4/Endo/blob/dev/IPMS_plots/IC%20transport%20zoom-1.jpeg)<!-- -->
 
 ### GO Bar Plot
 
-```r
+``` r
 GO_info_by_term_df_sig |> 
   dplyr::filter(sig != 'NS') |> 
   dplyr::arrange(desc(fold.Enrichment)) |> 
@@ -911,11 +934,37 @@ GO_info_by_term_df_sig |>
   scale_color_manual(values = c('navy', 'darkgoldenrod3', 'darkgray')) +
   scale_fill_manual(values = c('navy', 'darkgoldenrod3', 'darkgray'))
 ```
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/GO%20Bar%20Plot-1.jpeg)<!-- -->
+
+![](https://github.com/eriklarsen4/Endo/blob/dev/IPMS_plots/GO%20Bar%20Plot-1.jpeg)<!-- -->
+
+
+Interpretations:  
+- in general, higher fold enrichment is common among GO terms with few annotated
+members:  
+  + explicitly, having a higher percentage of genes/proteins from the list of
+  interest appear in a GO term (because of it having few gene/protein members)
+  leads to that term having a high fold enrichment
+  
+  + conversely, large, vague and general GO terms tend to have weak fold
+  enrichment  
+  
+  + therefore, large GO terms tend to have high significance and low fold
+  enrichment, and small GO terms tend to have high fold enrichment and lower
+  significance
+  
+- thus, depending on the experiment and the questions, the most informative
+results for unbiased screens are those that balance these two features
+
+- of course, the most informative and powerful results usually are combined with
+other (possibly *a priori*) information
+
+- in our case, we had other preliminary evidence that suggested ties to pH 
+and/or ionic differences in mutant mouse neurons, with phenotypes resembling
+those of autophagy perturbation
 
 ### GO CC Bar Plot
 
-```r
+``` r
 GO_info_by_term_df_sig |> 
   dplyr::filter(sig != "NS") |> 
   dplyr::arrange(desc(fold.Enrichment)) |> 
@@ -976,11 +1025,12 @@ GO_info_by_term_df_sig |>
             vjust = 1,
             alpha = 1)
 ```
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/GO%20CC%20Bar%20Plot-1.jpeg)<!-- -->
+
+![](https://github.com/eriklarsen4/Endo/blob/dev/IPMS_plots/GO%20CC%20Bar%20Plot-1.jpeg)<!-- -->
 
 ### GO BP Bar Plot
 
-```r
+``` r
 GO_info_by_term_df_sig |> 
   dplyr::filter(sig != "NS") |> 
   dplyr::arrange(desc(fold.Enrichment)) |> 
@@ -1037,4 +1087,5 @@ GO_info_by_term_df_sig |>
             vjust = 1,
             alpha = 1)
 ```
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_files/GO%20BP%20Bar%20Plot-1.jpeg)<!-- -->
+
+![](https://github.com/eriklarsen4/Endo/blob/dev/IPMS_plots/GO%20BP%20Bar%20Plot-1.jpeg)<!-- -->
