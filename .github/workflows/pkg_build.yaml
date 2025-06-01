@@ -2,7 +2,7 @@ name: Create and publish Docker image
 
 on:
   push:
-    branches: develop
+    branches: dev
     
     tags:
       -'v1.0' # Push events to matching v*, i.e. v1.0, v20.15.10
