@@ -7,7 +7,7 @@ Erik Larsen
 
 This markdown was developed to formally document the data analysis of
 FIRE-pHly data for **Dr. Martha Bhattacharya’s lab** at the **University
-of Arizona** for the endolysosomal paper under revision (2025-02-10).
+of Arizona** for the endolysosomal paper, Transmembrane protein 184B (TMEM184B) modulates endolysosomal acidification via the vesicular proton pump, accepted by The Journal of Cell Science (2025-06-18).
 
 Until an image is built, the `R version` used was **R 4.3.2** with the
 packages installed below
