@@ -33,8 +33,7 @@ Erik Larsen
 This markdown was developed to formally document the data analysis
 pipeline for TMEM184B immunoprecipitation tandem mass-spec experiments
 for **Dr. Martha Bhattacharya’s lab** at the **University of Arizona**
-for the endolysosomal paper under revision (2025-02-28) for the Journal
-of Cell Science
+for the [endolysosomal paper](<https://journals.biologists.com/jcs/article/doi/10.1242/jcs.263908/368440/Transmembrane-protein-184B-TMEM184B-modulates>)
 
 Until a container is built, the `R version` used was **R 4.3.2** with
 the packages installed below
