@@ -6,8 +6,7 @@
 
 **Endo**
 
-Repository for the TMEM184B Endoylysosomal Acidification paper (ref not yet 
-available)
+Repository for the [TMEM184B Endoylysosomal Acidification paper](<https://journals.biologists.com/jcs/article/doi/10.1242/jcs.263908/368440/Transmembrane-protein-184B-TMEM184B-modulates>)
 
 Adapted from source code used to analyze data in **Dr. Martha Bhattacharya's lab**
 at the **University of Arizona**
@@ -22,9 +21,6 @@ its own dedicated repository,
 and the second publication's repository, `eriklarsen4/Hippo`, is under
 development. Please see those repositories for each paper's
 respective URL.
-
-Once formally accepted by the `Journal of Cell Science`, the URL 
-will be included here.
 
 Please see the [vignettes](<https://github.com/eriklarsen4/Endo/blob/main/vignettes>)
 for more detail on both the data cleaning of the `FIREpHly` microscopy
