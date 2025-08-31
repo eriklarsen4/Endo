@@ -22,7 +22,7 @@ and the second publication's repository, `eriklarsen4/Hippo`, is under
 development. Please see those repositories for each paper's
 respective URL.
 
-Please see the [vignettes](<https://github.com/eriklarsen4/Endo/blob/main/vignettes>)
+Please see the [vignettes](<https://github.com/eriklarsen4/Endo/tree/master/vignettes>)
 for more detail on both the data cleaning of the `FIREpHly` microscopy
 data, the immunoprecipitation- label-free mass spec (`IPMS`) data, the IPMS gene 
 set enrichment analysis, and the statistical analysis of both datasets
