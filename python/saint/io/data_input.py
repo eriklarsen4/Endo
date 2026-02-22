@@ -10,52 +10,72 @@ Created on Sun Feb  8 23:36:08 2026
 import pandas as pd
 
 
-# %% Wide to long converter with replicate collapse
+# %% Extract bait matrix (wide → long with replicate preservation)
 
 def extract_bait_matrix(df):
     """
     Convert a wide format dataframe into the long format required by SAINT.
 
     The input df has a Protein column and additional columns of the form
-    condition underscore bait underscore rep.
+    <condition>_<bait>_<rep>.
 
-    Replicates for the same bait are collapsed by summing their values.
+    Replicates are preserved as separate columns. No collapsing is performed
+    in this function. Classical SAINT collapses replicates internally, while
+    hierarchical SAINT uses the full replicate matrix.
 
-    The output is a long format dataframe with columns
-    Bait, Protein, and Count_1.
+    The output is a long format dataframe with columns:
+    Protein, Bait, rep1, rep2, rep3, etc.
     """
 
     protein = df["Protein"].tolist()
     value_cols = [c for c in df.columns if c != "Protein"]
 
-    # Parse wide columns into (bait_name, numeric_values)
+    # Parse wide columns into nested structure:
+    # parsed[bait][rep_index] = vector of counts
     parsed = {}
+
     for col in value_cols:
         parts = col.split("_")
         if len(parts) < 3:
             continue
 
         bait_name = parts[1]
+        rep_label = parts[2]
+
+        try:
+            rep_index = int(rep_label)
+        except ValueError:
+            continue
+
         counts = pd.to_numeric(df[col], errors="coerce").fillna(0).to_numpy()
 
         if bait_name not in parsed:
-            parsed[bait_name] = counts.copy()
-        else:
-            parsed[bait_name] += counts
+            parsed[bait_name] = {}
 
-    # Build long-format dataframe
+        parsed[bait_name][rep_index] = counts
+
+    # Build long-format dataframe with replicate columns
     records = []
-    for bait_name, collapsed_counts in parsed.items():
-        for p, x in zip(protein, collapsed_counts):
-            records.append(
-                {
-                    "Bait": bait_name,
-                    "Protein": p,
-                    "Count_1": float(x)
-                }
-            )
+
+    for bait_name, rep_dict in parsed.items():
+        max_rep = max(rep_dict.keys())
+
+        for i, p in enumerate(protein):
+            row = {
+                "Protein": p,
+                "Bait": bait_name
+            }
+
+            for r in range(1, max_rep + 1):
+                row[f"rep{r}"] = float(rep_dict.get(r, pd.Series([0]*len(protein)))[i])
+
+            records.append(row)
 
     long_df = pd.DataFrame(records)
     return long_df
+
+
+
+
 
 

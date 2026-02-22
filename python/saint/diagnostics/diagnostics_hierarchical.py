@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Feb  9 20:09:11 2026
+Created on Sat Feb 21 18:51:52 2026
 
 @author: Erik
 """
@@ -9,91 +9,90 @@ Created on Mon Feb  9 20:09:11 2026
 
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
 
 
-# %% Plot helpers
+# %% Hierarchical diagnostics
 
-def _plot_loglik(history, bait):
-    sns.set_style("whitegrid")
-    fig, ax = plt.subplots()
-    ax.plot(history, marker="o")
-    ax.set_xlabel("Iteration")
-    ax.set_ylabel("Log likelihood")
-    ax.set_title(f"Log likelihood progression for bait {bait}")
-    return fig
-
-
-def _plot_lambda(history, label, bait):
-    sns.set_style("whitegrid")
-    fig, ax = plt.subplots()
-    for i, vec in enumerate(history):
-        ax.plot(vec, label=f"iter {i}")
-    ax.set_xlabel("Prey index")
-    ax.set_ylabel(label)
-    ax.set_title(f"{label} progression for bait {bait}")
-    return fig
-
-
-def _plot_tau(history, bait):
-    sns.set_style("whitegrid")
-    fig, ax = plt.subplots()
-    for i, vec in enumerate(history):
-        ax.plot(vec, label=f"iter {i}")
-    ax.set_xlabel("Prey index")
-    ax.set_ylabel("tau values")
-    ax.set_title(f"tau progression for bait {bait}")
-    return fig
-
-
-def _plot_pi(history, bait):
-    sns.set_style("whitegrid")
-    fig, ax = plt.subplots()
-    pi1 = [vec[0] for vec in history]
-    pi2 = [vec[1] for vec in history]
-    pi3 = [vec[2] for vec in history]
-    ax.plot(pi1, label="pi1", marker="o")
-    ax.plot(pi2, label="pi2", marker="o")
-    ax.plot(pi3, label="pi3", marker="o")
-    ax.set_xlabel("Iteration")
-    ax.set_ylabel("pi values")
-    ax.set_title(f"pi progression for bait {bait}")
-    ax.legend()
-    return fig
-
-
-def _plot_gamma(history, bait):
-    sns.set_style("whitegrid")
-    fig, ax = plt.subplots()
-    for i, mat in enumerate(history):
-        ax.plot(mat.mean(axis=0), label=f"iter {i}")
-    ax.set_xlabel("Component index")
-    ax.set_ylabel("Mean gamma")
-    ax.set_title(f"Gamma progression for bait {bait}")
-    return fig
-
-
-# %% Public entry point
-
-def make_hierarchical_plots(histories, bait):
+def make_hierarchical_plots(results_em, bait_name):
     """
-    Create diagnostic plots for hierarchical SAINT.
-
-    histories is a dictionary containing:
-    loglik_history, lambda1_history, lambda2_history, lambda3_history,
-    tau_history, pi_history, and gamma_history.
-
-    Returns a dictionary of matplotlib Figure objects.
+    Create diagnostic plots for the hierarchical SAINT EM results.
+    This function returns a dictionary of matplotlib Figure objects.
+    Figures will automatically appear in IDEs such as Spyder or VS Code.
     """
+
+    sns.set_style("whitegrid")
 
     figs = {}
 
-    figs["loglik"] = _plot_loglik(histories["loglik_history"], bait)
-    figs["lambda1"] = _plot_lambda(histories["lambda1_history"], "lambda1", bait)
-    figs["lambda2"] = _plot_lambda(histories["lambda2_history"], "lambda2", bait)
-    figs["lambda3"] = _plot_lambda(histories["lambda3_history"], "lambda3", bait)
-    figs["tau"] = _plot_tau(histories["tau_history"], bait)
-    figs["pi"] = _plot_pi(histories["pi_history"], bait)
-    figs["gamma"] = _plot_gamma(histories["gamma_history"], bait)
+    # %% Log likelihood trajectory
+    fig_loglik = plt.figure()
+    plt.plot(results_em["loglik_history"], marker="o")
+    plt.xlabel("Iteration")
+    plt.ylabel("Log likelihood")
+    plt.title(f"Hierarchical SAINT log likelihood trajectory for {bait_name}")
+    figs["loglik"] = fig_loglik
+
+    # %% Lambda trajectories
+    fig_lambda = plt.figure()
+    lambda1_hist = np.array(results_em["lambda1_history"])
+    lambda2_hist = np.array(results_em["lambda2_history"])
+    lambda3_hist = np.array(results_em["lambda3_history"])
+
+    plt.plot(lambda1_hist.mean(axis=1), label="lambda1 mean")
+    plt.plot(lambda2_hist.mean(axis=1), label="lambda2 mean")
+    plt.plot(lambda3_hist.mean(axis=1), label="lambda3 mean")
+    plt.xlabel("Iteration")
+    plt.ylabel("Mean lambda value")
+    plt.title(f"Hierarchical SAINT lambda trajectories for {bait_name}")
+    plt.legend()
+    figs["lambda"] = fig_lambda
+
+    # %% Pi trajectory
+    fig_pi = plt.figure()
+    pi_hist = np.array(results_em["pi_history"])
+    plt.plot(pi_hist[:, 0], label="pi1")
+    plt.plot(pi_hist[:, 1], label="pi2")
+    plt.plot(pi_hist[:, 2], label="pi3")
+    plt.xlabel("Iteration")
+    plt.ylabel("Mixture weight")
+    plt.title(f"Hierarchical SAINT pi trajectories for {bait_name}")
+    plt.legend()
+    figs["pi"] = fig_pi
+
+    # %% Prior trajectories alpha, a, b
+    fig_priors = plt.figure()
+    alpha_hist = np.array(results_em["alpha_history"])
+    a_hist = np.array(results_em["a_history"])
+    b_hist = np.array(results_em["b_history"])
+
+    plt.plot(alpha_hist[:, 0], label="alpha1")
+    plt.plot(alpha_hist[:, 1], label="alpha2")
+    plt.plot(alpha_hist[:, 2], label="alpha3")
+    plt.plot(a_hist[:, 0], label="a1")
+    plt.plot(a_hist[:, 1], label="a2")
+    plt.plot(a_hist[:, 2], label="a3")
+    plt.plot(b_hist[:, 0], label="b1")
+    plt.plot(b_hist[:, 1], label="b2")
+    plt.plot(b_hist[:, 2], label="b3")
+
+    plt.xlabel("Iteration")
+    plt.ylabel("Prior parameter value")
+    plt.title(f"Hierarchical SAINT prior trajectories for {bait_name}")
+    plt.legend()
+    figs["priors"] = fig_priors
+
+    # %% Gamma distributions
+    fig_gamma = plt.figure()
+    gamma_final = results_em["gamma"]
+    plt.hist(gamma_final[:, 0], bins=30, alpha=0.5, label="gamma1")
+    plt.hist(gamma_final[:, 1], bins=30, alpha=0.5, label="gamma2")
+    plt.hist(gamma_final[:, 2], bins=30, alpha=0.5, label="gamma3")
+    plt.xlabel("Gamma value")
+    plt.ylabel("Count")
+    plt.title(f"Hierarchical SAINT gamma distributions for {bait_name}")
+    plt.legend()
+    figs["gamma"] = fig_gamma
 
     return figs
 

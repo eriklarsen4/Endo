@@ -1,0 +1,29 @@
+name: python-tests
+
+on:
+  push:
+    branches: [ python-saint-integration ]
+  pull_request:
+    branches: [ python-saint-integration ]
+
+jobs:
+  test-python:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        working-directory: python
+        run: |
+          pip install -e .
+          pip install pytest pytest-cov
+
+      - name: Run tests
+        working-directory: python
+        run: pytest --cov=saint --cov-report=xml

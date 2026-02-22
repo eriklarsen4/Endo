@@ -1,142 +1,82 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Feb  9 09:51:48 2026
+Created on Sat Feb 21 18:22:55 2026
 
 @author: Erik
 """
 
 # %% Imports
 
-import os
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
-from saint.io.data_input import extract_bait_matrix
 from saint.model.hierarchical_em_wrapper import run_em_hierarchical
-from saint.diagnostics.diagnostics_hierarchical import make_hierarchical_plots
+from saint.io.data_input import extract_bait_matrix
 
 
-# %% Helper
-
-def reshape_counts_df(df, bait, biological_bait):
-    """
-    Extract the count matrix X for a specific bait.
-
-    X is a numeric matrix of prey (protein) by experiment.
-    df_bait is the subset of the input DataFrame corresponding to the bait.
-    """
-    df_bait = df[df["Bait"] == bait].copy()
-    count_cols = [c for c in df_bait.columns if c.startswith("Count_")]
-    X = df_bait[count_cols].to_numpy()
-    return X, df_bait
-
-
-def _summarize_histories_for_csv(histories):
-    """
-    Summarize EM histories for writing to a CSV file.
-
-    Each row corresponds to one EM iteration and includes:
-    log likelihood, mean lambda1 lambda2 lambda3,
-    mean tau, mixture proportions pi1 pi2 pi3.
-    """
-    n_iter = len(histories["loglik_history"])
-    rows = []
-    for i in range(n_iter):
-        lambda1_mean = histories["lambda1_history"][i].mean()
-        lambda2_mean = histories["lambda2_history"][i].mean()
-        lambda3_mean = histories["lambda3_history"][i].mean()
-        tau_mean = histories["tau_history"][i].mean()
-        pi_vec = histories["pi_history"][i]
-        row = {
-            "iteration": i,
-            "loglik": histories["loglik_history"][i],
-            "lambda1_mean": lambda1_mean,
-            "lambda2_mean": lambda2_mean,
-            "lambda3_mean": lambda3_mean,
-            "tau_mean": tau_mean,
-            "pi1": pi_vec[0],
-            "pi2": pi_vec[1],
-            "pi3": pi_vec[2]
-        }
-        rows.append(row)
-    return pd.DataFrame(rows)
-
-
-# %% Pipeline
+# %% Hierarchical SAINT pipeline
 
 def run_hierarchical_pipeline(
     input_data,
     bait_names,
     metadata,
-    max_iter=100,
+    max_iter=200,
     tol_loglik=1e-6,
     tol_params=1e-6,
-    seed=None,
+    seed=1,
     verbose=False,
-    make_plots=True,
-    plot_dir=None,
-    mode="ide"
+    make_plots=False,
+    plot_dir="plots_hierarchical"
 ):
     """
-    Run hierarchical SAINT for multiple baits.
+    Run the hierarchical SAINT pipeline. This function preserves replicate level counts,
+    runs hierarchical EM for each bait, merges final parameter values into the original
+    input dataframe, and returns a unified results object containing raw EM histories,
+    metadata, and a sorted results dataframe.
 
-    lambda1, lambda2, and lambda3 are component-specific Poisson rates
-    for each prey (protein). These represent "background", "intermediate",
-    and "signal" components in the three component mixture.
+    input_data is the original wide format dataframe.
+    bait_names is the list of experimental baits.
+    metadata contains biological bait names, accession numbers, and molecular weights.
+    max_iter, tol_loglik, tol_params, seed, verbose, make_plots, and plot_dir control EM behavior.
 
-    tau is the prey-specific shrinkage rate for the Gamma prior on lambda.
-    pi is the vector of mixture proportions for the three components.
-    gamma represents the posterior probability that each prey belongs
-    to each component.
-
-    In mode, "ide", the function returns a dictionary keyed by bait name.
-    Each entry contains:
-        output_df: final lambda, tau, pi, and gamma values
-        merged_df: input data merged with output_df
-        raw_outputs: histories of lambda, tau, pi, gamma, and log likelihood
-        metadata: bait and biological bait names
-
-    In mode, "cli", the same structure is returned, but plots are not shown.
-    Plots are saved to plot_dir if provided. For each bait, a bait-specific
-    output .csv and histories .csv are written.
-
-    If the input is in wide format (Protein by bait columns), the function
-    performs implicit conversion to long format using extract_bait_matrix.
+    The output is a dictionary with keys raw_outputs, metadata, and results_df.
     """
 
-    # Implicit conversion from wide format to long format if needed
-    if "Bait" not in input_data.columns and "Protein" in input_data.columns:
-        input_data = extract_bait_matrix(input_data)
+    # %% Extract long format data (preserves replicate columns)
+    long_df = extract_bait_matrix(input_data)
 
-    results = {}
+    # %% Identify controls
+    all_baits = sorted(long_df["Bait"].unique())
+    controls = [b for b in all_baits if b not in bait_names]
 
+    controls_used = {}
+    for ctrl in controls:
+        ctrl_rows = long_df[long_df["Bait"] == ctrl]
+        rep_cols_ctrl = [c for c in ctrl_rows.columns if c.startswith("rep")]
+        controls_used[ctrl] = rep_cols_ctrl
+
+    # %% Prepare output containers
+    raw_outputs = {}
+    results_rows = []
+
+    # %% Run EM per bait
     for bait in bait_names:
 
-        biological_bait = metadata["bait_to_biological_name"][bait]
+        df_bait = long_df[long_df["Bait"] == bait].copy()
 
-        df_bait = input_data[input_data["Bait"] == bait].copy()
-        X, df_bait = reshape_counts_df(
-            df_bait,
-            bait,
-            biological_bait
-        )
+        rep_cols = [c for c in df_bait.columns if c.startswith("rep")]
+        X = df_bait[rep_cols].to_numpy()
 
-        lambda1_init = np.maximum(X.mean(axis=1) * 0.5, 1e-3)
-        lambda2_init = np.maximum(X.mean(axis=1) * 1.0, 1e-3)
-        lambda3_init = np.maximum(X.mean(axis=1) * 2.0, 1e-3)
+        biological_bait = metadata["biological_bait_names"][bait]
 
-        tau_init = np.ones(X.shape[0])
-        pi_init = np.array([0.6, 0.3, 0.1])
-        alpha = np.array([2.0, 2.0, 2.0])
+        X_sum = X.sum(axis=1).astype(float)
+        mean_level = max(X_sum.mean(), 1.0)
 
         hyperparams = {
-            "lambda1_init": lambda1_init,
-            "lambda2_init": lambda2_init,
-            "lambda3_init": lambda3_init,
-            "tau_init": tau_init,
-            "pi_init": pi_init,
-            "alpha": alpha
+            "lambda1_init": np.full(X.shape[0], 0.5 * mean_level),
+            "lambda2_init": np.full(X.shape[0], 1.0 * mean_level),
+            "lambda3_init": np.full(X.shape[0], 2.0 * mean_level),
+            "pi_init": np.array([0.6, 0.3, 0.1], dtype=float)
         }
 
         results_em = run_em_hierarchical(
@@ -150,81 +90,68 @@ def run_hierarchical_pipeline(
             verbose=verbose
         )
 
-        histories = {
-            "loglik_history": results_em["loglik_history"],
-            "lambda1_history": results_em["lambda1_history"],
-            "lambda2_history": results_em["lambda2_history"],
-            "lambda3_history": results_em["lambda3_history"],
-            "tau_history": results_em["tau_history"],
-            "pi_history": results_em["pi_history"],
-            "gamma_history": results_em["gamma_history"]
+        raw_outputs[bait] = {
+            "loglik": results_em["loglik_history"],
+            "lambda1": results_em["lambda1_history"],
+            "lambda2": results_em["lambda2_history"],
+            "lambda3": results_em["lambda3_history"],
+            "tau": results_em["tau_history"],
+            "pi": results_em["pi_history"],
+            "gamma": results_em["gamma_history"],
+            "alpha": results_em["alpha_history"],
+            "a": results_em["a_history"],
+            "b": results_em["b_history"]
         }
 
-        if make_plots:
-            figs = make_hierarchical_plots(histories, bait)
-            if mode == "ide":
-                for fig in figs.values():
-                    fig.show()
-            if mode == "cli" and plot_dir is not None:
-                os.makedirs(plot_dir, exist_ok=True)
-                for name, fig in figs.items():
-                    fig_path = os.path.join(
-                        plot_dir,
-                        f"{bait}_{name}.png"
-                    )
-                    fig.savefig(fig_path)
-                plt.close("all")
+        lambda1 = results_em["lambda1"]
+        lambda2 = results_em["lambda2"]
+        lambda3 = results_em["lambda3"]
+        tau = results_em["tau"]
+        pi = results_em["pi"]
+        gamma = results_em["gamma"]
 
-        final_pi = histories["pi_history"][-1]
-        final_gamma = histories["gamma_history"][-1]
+        df_bait_reset = df_bait.reset_index(drop=True)
 
-        output_df = pd.DataFrame({
-            "Protein": df_bait["Protein"].values,
-            "lambda1": histories["lambda1_history"][-1],
-            "lambda2": histories["lambda2_history"][-1],
-            "lambda3": histories["lambda3_history"][-1],
-            "tau": histories["tau_history"][-1],
-            "pi1": final_pi[0],
-            "pi2": final_pi[1],
-            "pi3": final_pi[2],
-            "gamma1": final_gamma[:, 0],
-            "gamma2": final_gamma[:, 1],
-            "gamma3": final_gamma[:, 2]
-        })
+        for i, row in df_bait_reset.iterrows():
+            results_rows.append({
+                "Protein": row["Protein"],
+                "Bait": bait,
+                **{col: row[col] for col in rep_cols},
+                "lambda1": lambda1[i],
+                "lambda2": lambda2[i],
+                "lambda3": lambda3[i],
+                "tau": tau[i],
+                "pi1": pi[0],
+                "pi2": pi[1],
+                "pi3": pi[2],
+                "gamma1": gamma[i, 0],
+                "gamma2": gamma[i, 1],
+                "gamma3": gamma[i, 2]
+            })
 
-        merged_df = pd.merge(
-            df_bait,
-            output_df,
-            on="Protein",
-            how="left"
-        )
+    # %% Build results_df
+    results_df = pd.DataFrame(results_rows)
 
-        if mode == "cli":
-            if plot_dir is not None:
-                os.makedirs(plot_dir, exist_ok=True)
-                out_path = os.path.join(plot_dir, f"{bait}_output.csv")
-                output_df.to_csv(out_path, index=False)
-                hist_df = _summarize_histories_for_csv(histories)
-                hist_path = os.path.join(plot_dir, f"{bait}_histories.csv")
-                hist_df.to_csv(hist_path, index=False)
+    # %% Sort by Protein then gamma3 descending
+    results_df = results_df.sort_values(
+        by=["Protein", "gamma3"],
+        ascending=[True, False],
+        ignore_index=True
+    )
 
-        results[bait] = {
-            "output_df": output_df,
-            "merged_df": merged_df,
-            "raw_outputs": histories,
-            "metadata": {
-                "bait": bait,
-                "biological_bait": biological_bait
-            }
-        }
+    # %% Build unified metadata
+    metadata_out = {
+        "bait_names": bait_names,
+        "biological_bait_names": metadata["biological_bait_names"],
+        "AN": metadata["AN"],
+        "MW": metadata["MW"],
+        "controls_used": controls_used
+    }
 
-    return results
-
-
-
-
-
-
-
-
+    # %% Final unified output
+    return {
+        "raw_outputs": raw_outputs,
+        "metadata": metadata_out,
+        "results_df": results_df
+    }
 
