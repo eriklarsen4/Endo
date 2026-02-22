@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Feb 21 23:42:40 2026
-
-@author: Erik
-"""
-
 # SAINT: Structured Analysis of Interactome Networks
 
 This repository contains a fully reproducible Python implementation of both **classical SAINT** and a **hierarchical EM-based SAINT model** for analyzing IP–MS interactome data. The package provides:
