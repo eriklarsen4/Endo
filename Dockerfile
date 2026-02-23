@@ -1,5 +1,5 @@
-# Base image with RStudio Server and R 4.3.2
-FROM rocker/rstudio:4.3.2
+# Base image with RStudio Server and R 4.4.1
+FROM rocker/rstudio:4.4.1
 
 # Avoid interactive prompts during apt operations
 ENV DEBIAN_FRONTEND=noninteractive
