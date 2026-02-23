@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Feb  7 13:55:20 2026
+Created on Mon Feb 23 09:14:57 2026
 
 @author: Erik
 """
@@ -9,13 +9,14 @@ Created on Sat Feb  7 13:55:20 2026
 import numpy as np
 from scipy.special import gammaln
 
-from saint.model.loglik import compute_loglik
+from saint.model.hierarchical_likelihood import compute_loglik
+
 
 # %%
-def test_compute_loglik_simple_case():
+def test_compute_hierarchical_loglik_simple_case():
     """
-    Minimal test verifying that compute_loglik matches a manually
-    computed mixture-of-Poissons likelihood on a tiny dataset.
+    Minimal test verifying that compute_hierarchical_loglik matches a manually
+    computed mixture-of-Poissons likelihood on a tiny dataset, ignoring priors.
     """
     X = np.array([
         [1, 2],
@@ -51,6 +52,8 @@ def test_compute_loglik_simple_case():
         lambda3,
         pi,
         use_exact_poisson_likelihood=True,
+        include_priors=False,  # or whatever your signature uses
     )
 
     assert np.isclose(loglik, expected)
+
