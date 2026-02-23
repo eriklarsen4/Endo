@@ -3,4 +3,4 @@
 .RData
 .Ruserdata
 inst/doc
-^proteomics.py
+Endo/python/proteomics.py
