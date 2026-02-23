@@ -2,9 +2,9 @@ name: python-tests
 
 on:
   push:
-    branches: [ python-saint-integration ]
+    branches: [ python_saint_integration ]
   pull_request:
-    branches: [ python-saint-integration ]
+    branches: [ python_saint_integration ]
 
 jobs:
   test-python:
