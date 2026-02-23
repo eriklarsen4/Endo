@@ -8,7 +8,7 @@ Created on Thu Feb 19 15:57:43 2026
 # %% Imports
 
 import numpy as np
-from saint.model.classical_em_wrapper import run_em
+from saint.model.classical_em_wrapper import run_em_classical
 
 
 # %% Tests
@@ -22,7 +22,7 @@ def test_em_runs_and_returns_expected_keys():
         "alpha": np.array([2.0, 2.0])
     }
 
-    results = run_em(
+    results = run_em_classical(
         X=X,
         hyperparams=hyperparams,
         biological_bait="BAIT",
@@ -51,7 +51,7 @@ def test_em_loglik_increases_or_stabilizes():
         "alpha": np.array([2.0, 2.0])
     }
 
-    results = run_em(
+    results = run_em_classical(
         X=X,
         hyperparams=hyperparams,
         biological_bait="BAIT",
