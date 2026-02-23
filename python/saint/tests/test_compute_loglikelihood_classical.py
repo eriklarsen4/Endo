@@ -9,7 +9,7 @@ Created on Sat Feb  7 13:55:20 2026
 import numpy as np
 from scipy.special import gammaln
 
-from saint.model.classical_loglik import compute_loglik
+from saint.model.classical_likelihood import compute_loglik
 
 
 # %% Tests

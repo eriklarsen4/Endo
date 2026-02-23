@@ -9,7 +9,7 @@ Created on Mon Feb 23 09:14:57 2026
 import numpy as np
 from scipy.special import gammaln
 
-from saint.model.hierarchical_loglik import compute_loglik
+from saint.model.hierarchical_likelihood import compute_loglik
 
 
 # %% Tests
