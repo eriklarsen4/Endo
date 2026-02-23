@@ -40,9 +40,19 @@ WORKDIR /home/rstudio/endo
 # Copy the entire Endo repo into the container
 COPY . /home/rstudio/endo
 
-# Install renv and restore the R environment
+# System libraries required by ragg and other graphics packages
+RUN apt-get update && apt-get install -y \
+    libwebp-dev \
+    libwebpmux3 \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libfontconfig1-dev
+
+# Install renv and restore environment
 RUN Rscript -e "install.packages('renv', repos = 'https://cloud.r-project.org')" && \
     Rscript -e "renv::restore()"
+
 
 # Install the local R package (the repo root is the package)
 RUN Rscript -e "install.packages('remotes', repos = 'https://cloud.r-project.org')" && \
