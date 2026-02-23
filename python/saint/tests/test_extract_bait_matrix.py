@@ -6,50 +6,61 @@ Created on Thu Feb 19 15:20:16 2026
 """
 
 # %% Imports
-
 import pandas as pd
+import numpy as np
 
 from saint.io.data_input import extract_bait_matrix
 
 
-# %% Fixtures
-
-def make_input():
-    """
-    Create a small input table with two baits.
-    """
-
-    data = {
-        "Protein": ["P1", "P2", "P3", "P1", "P2", "P3"],
-        "Bait": ["B1", "B1", "B1", "B2", "B2", "B2"],
-        "Count": [10, 2, 0, 5, 1, 0]
-    }
-
-    return pd.DataFrame(data)
-
-
 # %% Tests
 
-def test_extract_bait_matrix_shapes():
-    """
-    Test that extract_bait_matrix returns the expected shapes.
-    """
+def test_extract_bait_matrix_basic_structure():
+    # Wide-format synthetic input
+    df = pd.DataFrame({
+        "Protein": ["P1", "P2"],
+        "condA_B1_1": [5, 1],
+        "condA_B1_2": [3, 0],
+        "condA_CTRL_1": [2, 0],
+        "condA_CTRL_2": [1, 1],
+    })
 
-    df = make_input()
-    X, metadata, column_labels, mapping = extract_bait_matrix(df, "B1")
+    long_df = extract_bait_matrix(df)
 
-    assert X.shape == (3, 1)
-    assert metadata.shape[0] == 3
-    assert len(column_labels) == 1
+    # Expected baits
+    expected_baits = {"B1", "CTRL"}
+    assert set(long_df["Bait"].unique()) == expected_baits
+
+    # Expected columns
+    expected_cols = {"Protein", "Bait", "rep1", "rep2"}
+    assert expected_cols.issubset(long_df.columns)
+
+    # Should have 2 proteins × 2 baits = 4 rows
+    assert len(long_df) == 4
+
+    # Check one bait block explicitly
+    b1_rows = long_df[long_df["Bait"] == "B1"].sort_values("Protein")
+    assert np.allclose(b1_rows["rep1"].to_numpy(), [5.0, 1.0])
+    assert np.allclose(b1_rows["rep2"].to_numpy(), [3.0, 0.0])
+
+    # Check control bait block
+    ctrl_rows = long_df[long_df["Bait"] == "CTRL"].sort_values("Protein")
+    assert np.allclose(ctrl_rows["rep1"].to_numpy(), [2.0, 0.0])
+    assert np.allclose(ctrl_rows["rep2"].to_numpy(), [1.0, 1.0])
 
 
-def test_extract_bait_matrix_filters_correct_bait():
-    """
-    Test that extract_bait_matrix selects only the requested bait.
-    """
+def test_extract_bait_matrix_missing_replicates_filled_with_zero():
+    df = pd.DataFrame({
+        "Protein": ["P1", "P2"],
+        "condA_B1_1": [5, 1],
+        # B1 has no rep2 column → should be filled with zeros
+        "condA_CTRL_1": [2, 0],
+        "condA_CTRL_2": [1, 1],
+    })
 
-    df = make_input()
-    X, metadata, column_labels, mapping = extract_bait_matrix(df, "B2")
+    long_df = extract_bait_matrix(df)
 
-    assert metadata["Protein"].tolist() == ["P1", "P2", "P3"]
-    assert X[:, 0].tolist() == [5, 1, 0]
+    # B1 should have rep1 and rep2, with rep2 filled with zeros
+    b1_rows = long_df[long_df["Bait"] == "B1"].sort_values("Protein")
+
+    assert np.allclose(b1_rows["rep1"].to_numpy(), [5.0, 1.0])
+    assert np.allclose(b1_rows["rep2"].to_numpy(), [0.0, 0.0])

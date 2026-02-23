@@ -42,7 +42,8 @@ def test_all_expected_modules_importable():
         "saint.model.updates.lambda_updates",
         "saint.model.updates.pi_updates",
         "saint.model.updates.tau_updates",
-        "saint.model.loglik",
+        "saint.model.classical_likelihood",
+        "saint.model.hierarchical_likelihood",
         "saint.diagnostics.diagnostics_classical",
         "saint.diagnostics.diagnostics_hierarchical",
     ]

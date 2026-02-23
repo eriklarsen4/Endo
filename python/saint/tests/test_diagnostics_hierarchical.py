@@ -6,82 +6,56 @@ Created on Thu Feb 19 15:19:02 2026
 """
 
 # %% Imports
-
 import numpy as np
-import pandas as pd
-from matplotlib.figure import Figure
-
 from saint.diagnostics.diagnostics_hierarchical import make_hierarchical_plots
-
-
-# %% Fixtures
-
-def make_raw_outputs():
-    """
-    Create a minimal raw output dictionary for testing diagnostics.
-    """
-
-    lambda1 = np.array([1.0, 2.0, 3.0])
-    lambda2 = np.array([0.5, 0.5, 0.5])
-    lambda3 = np.array([0.1, 0.1, 0.1])
-
-    pi = np.array([0.33, 0.33, 0.34])
-
-    gamma = np.array([
-        [0.8, 0.1, 0.1],
-        [0.2, 0.3, 0.5],
-        [0.1, 0.1, 0.8]
-    ])
-
-    tau = np.array([1.0, 1.0, 1.0])
-
-    histories = {
-        "lambda1": [lambda1],
-        "lambda2": [lambda2],
-        "lambda3": [lambda3],
-        "pi": [pi],
-        "loglik": [-10.0, -5.0, -3.0]
-    }
-
-    return {
-        "lambda1": lambda1,
-        "lambda2": lambda2,
-        "lambda3": lambda3,
-        "pi": pi,
-        "gamma": gamma,
-        "tau": tau,
-        "histories": histories,
-        "column_labels": ["C1", "C2", "C3"],
-        "mapping": {"Protein": [0, 1, 2]}
-    }
+import matplotlib.figure as mpl_fig
 
 
 # %% Tests
 
-def test_make_plots_returns_figures():
-    """
-    Test that diagnostics return a dictionary of figures.
-    """
+def test_make_hierarchical_plots_returns_figures():
+    # Minimal synthetic hierarchical EM results
+    results_em = {
+        "loglik_history": [0.0, 1.0, 2.0],
 
-    raw_outputs = make_raw_outputs()
-    figs = make_hierarchical_plots(raw_outputs, output_dir=None)
+        "lambda1_history": [np.array([1.0, 2.0]), np.array([1.5, 2.5])],
+        "lambda2_history": [np.array([3.0, 4.0]), np.array([3.5, 4.5])],
+        "lambda3_history": [np.array([5.0, 6.0]), np.array([5.5, 6.5])],
 
-    assert isinstance(figs, dict)
-    assert len(figs) > 0
+        "pi_history": [
+            np.array([0.6, 0.3, 0.1]),
+            np.array([0.5, 0.3, 0.2]),
+        ],
 
-    for f in figs.values():
-        assert isinstance(f, Figure)
+        "alpha_history": [
+            np.array([2.0, 2.0, 2.0]),
+            np.array([2.1, 2.0, 1.9]),
+        ],
+        "a_history": [
+            np.array([1.0, 1.0, 1.0]),
+            np.array([1.1, 1.0, 0.9]),
+        ],
+        "b_history": [
+            np.array([0.5, 0.5, 0.5]),
+            np.array([0.6, 0.5, 0.4]),
+        ],
 
+        "gamma_history": [
+            np.array([[0.8, 0.1, 0.1], [0.2, 0.3, 0.5]])
+        ],
 
-def test_diagnostics_do_not_modify_raw_outputs():
-    """
-    Test that diagnostics do not change the raw output dictionary.
-    """
+        # Final gamma matrix for histogram
+        "gamma": np.array([
+            [0.8, 0.1, 0.1],
+            [0.2, 0.3, 0.5],
+        ]),
+    }
 
-    raw_outputs = make_raw_outputs()
-    before = raw_outputs["lambda1"].copy()
+    figs = make_hierarchical_plots(results_em, bait_name="B1")
 
-    _ = make_hierarchical_plots(raw_outputs, output_dir=None)
+    expected_keys = {"loglik", "lambda", "pi", "priors", "gamma"}
+    assert expected_keys.issubset(figs.keys())
 
-    after = raw_outputs["lambda1"]
-    assert np.allclose(before, after)
+    # All returned objects must be matplotlib Figure instances
+    for fig in figs.values():
+        assert isinstance(fig, mpl_fig.Figure)
