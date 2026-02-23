@@ -17,10 +17,11 @@ from saint.pipeline.hierarchical_saint import run_hierarchical_pipeline
 def test_hierarchical_pipeline_runs_and_returns_expected_structure():
     # Minimal synthetic wide-format input
     input_data = pd.DataFrame({
-        "Protein": ["P1", "P2", "P1", "P2"],
-        "Bait":    ["B1", "B1", "CTRL", "CTRL"],
-        "rep1":    [5, 1, 2, 0],
-        "rep2":    [3, 0, 1, 1],
+    "Protein": ["P1", "P2"],
+    "condA_B1_1": [5, 1],
+    "condA_B1_2": [3, 0],
+    "condA_CTRL_1": [2, 0],
+    "condA_CTRL_2": [1, 1],
     })
 
     bait_names = ["B1"]

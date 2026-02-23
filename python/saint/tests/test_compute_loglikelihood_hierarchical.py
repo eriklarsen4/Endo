@@ -9,27 +9,34 @@ Created on Mon Feb 23 09:14:57 2026
 import numpy as np
 from scipy.special import gammaln
 
-from saint.model.hierarchical_likelihood import compute_loglik
+from saint.model.hierarchical_loglik import compute_loglik
 
 
-# %%
+# %% Tests
+
 def test_compute_hierarchical_loglik_simple_case():
     """
-    Minimal test verifying that compute_hierarchical_loglik matches a manually
-    computed mixture-of-Poissons likelihood on a tiny dataset, ignoring priors.
+    Minimal test verifying that compute_loglik matches a manually
+    computed mixture-of-three-Poissons likelihood on a tiny dataset.
+    This test intentionally ignores priors and tau, matching the
+    mixture-only behavior of the implementation.
     """
+
+    # X: 2 preys × 2 replicates
     X = np.array([
         [1, 2],
         [0, 1],
     ], dtype=float)
 
+    # Three-component hierarchical mixture
     lambda1 = np.array([1.0, 1.0])
     lambda2 = np.array([2.0, 2.0])
     lambda3 = np.array([4.0, 4.0])
 
+    # Mixture weights
     pi = np.array([0.3, 0.3, 0.4])
 
-    # manual expected value
+    # ----- Manual expected log-likelihood -----
     expected = 0.0
     for p in range(X.shape[0]):
         Xp = X[p]
@@ -45,15 +52,13 @@ def test_compute_hierarchical_loglik_simple_case():
         )
         expected += np.log(joint)
 
+    # ----- Actual -----
     loglik = compute_loglik(
         X,
         lambda1,
         lambda2,
         lambda3,
         pi,
-        use_exact_poisson_likelihood=True,
-        include_priors=False,  # or whatever your signature uses
     )
 
-    assert np.isclose(loglik, expected)
-
+    assert np.allclose(loglik, expected)
