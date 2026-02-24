@@ -1,0 +1,13 @@
+^../python/
+^../Dockerfile
+^../entrypoint\.sh
+^../FIREpHly_plots/
+^../IPMS_plots/
+^../renv/
+^../renv\.lock
+^../\.Rprofile
+^../\.Rhistory
+^../\.github/
+^../README\.md
+^../Endo_1\.0\.0\.zip
+^../Endo\.Rproj

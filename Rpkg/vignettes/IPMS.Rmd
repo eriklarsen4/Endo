@@ -4,11 +4,32 @@ author: "Erik Larsen"
 date: "2025-01-22"
 output:
   html_document:
+    toc: true
     fig_width: 10
     fig_height: 10
-    toc: TRUE
-    dev: jpeg
+  pdf_document:
+    fig_width: 10
+    fig_height: 10
+    latex_engine: xelatex
+  md_document:
+    variant: gfm
+vignette: >
+  %\VignetteIndexEntry{IPMS vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 10,
+  fig.height = 10,
+  dev = c("png", "pdf"),
+  fig.path = "figures/"
+)
+```
 
 ## Overview
 
@@ -20,11 +41,17 @@ endolysosomal paper under revision (2025-02-28) for the Journal of Cell Science
 Until a container is built, the `R version` used was **R 4.3.2** with the
 packages installed below
 
-## Set up Environment {.tabset .tabset-pills .tabset-fade}
+## Set up Environment
+
+```{r, results='asis', echo=FALSE}
+if (knitr::is_html_output()) {
+  cat('## Set up Environment {.tabset .tabset-pills .tabset-fade}\n')
+}
+```
 
 Attach packages
 
-```r
+```{r Attach Packages, eval=T, include = T, message = F, warning = F, echo = T}
 packages <- c('TMEM', 'Endo', 'ggplot2', 'rstatix', 'forcats', 'knitr')
 
 for (package in packages) {
@@ -37,17 +64,23 @@ for (package in packages) {
 
 Load the IPMS TSC "raw" data
 
-```r
-data("IPMS_counts")
+```{r Load the IPMS TSC raw data, eval = T, include = T, message = F, warning = F, echo = T}
+Endo::data("IPMS_counts")
 ALL_DF <- IPMS_counts
 rm(IPMS_counts)
 ```
 
-## Wrangle the TSC Data {.tabset .tabset-pills .tabset-fade}
+## Wrangle the TSC Data
+
+```{r, results='asis', echo=FALSE}
+if (knitr::is_html_output()) {
+  cat('## Wrangle the TSC Data {.tabset .tabset-pills .tabset-fade}\n')
+}
+```
 
 Break the original wrangling call into commented chunks for clarity
 
-```r
+```{r Wrangle the TSC Data 1, eval = T, include = T, message = F, warning = F, echo = T}
 ALL_DF <- ALL_DF |> 
   dplyr::select(-1) |> ## remove empty column
   dplyr::rename_with(
@@ -94,7 +127,7 @@ ALL_DF <- ALL_DF |>
                 ) # rename the V5 columns by replacing hyphens with _'s
 ```
 
-```r
+```{r Wrangle the TSC Data 2, eval = T, include = T, message = F, warning = F, echo = T}
 ALL_DF <- ALL_DF |>
   dplyr::mutate(
     HumanGeneID = stringr::str_extract(
@@ -126,7 +159,7 @@ ALL_DF <- ALL_DF |>
     )
 ```
 
-```r
+```{r Wrangle the TSC Data 3, eval = T, include = T, warning = F, message = F, echo = T}
 ALL_DF <- ALL_DF |> 
   dplyr::mutate(
     
@@ -169,15 +202,26 @@ ALL_DF <- ALL_DF |>
   dplyr::arrange(desc(avgFC)) # sort by grand FC from highest to lowest)
 ```
 
-## Filter Wrangled IPMS Counts Data {.tabset .tabset-pills .tabset-fade}
+
+## Filter Wrangled IPMS Counts Data
+
+```{r, results='asis', echo=FALSE}
+if (knitr::is_html_output()) {
+  cat('## Filter Wrangled IPMS Counts Data {.tabset .tabset-pills .tabset-fade}\n')
+}
+```
+
+Apply stringent filtering methods to narrow potential candidates
+
+### Heuristic Filter
 
 Filter using aggressive heuristics Dr. Paul Langlais
 (University of Arizona College of Molecular Medicine Proteomics;
 personal communication)
 
-```r
+```{r Apply Heuristic Filters, eval = T, include = T, message = F, warning = F, echo = T}
 Compiled_Candidate_List <- ALL_DF |>
-  dplyr:::arrange(desc(avgFC)) |>
+  dplyr::arrange(desc(avgFC)) |>
   dplyr::filter(
     avgFC > 2,
     avgV5_FC > 2,
@@ -220,15 +264,17 @@ Compiled_Candidate_List <- ALL_DF |>
   unlist() |> as.character()
 ```
 
+### CRAPome Filter
+
 Import CRAPome results (load from Endo package)
 
-```r
-data("CRAPome_results")
+```{r Import CRAPome results, eval = T, include = T, message = F, warning = F, echo = T}
+Endo::data("CRAPome_results")
 ```
 
 Wrangle CRAPome results
 
-```r
+```{r Wrangle CRAPome results, eval = T, include = T, message = F, warning = F, echo = T}
 Crapome_results <- CRAPome_results |>
   dplyr::filter(!grepl(Mapped, pattern = '/|identifier')) |>
   dplyr::select(1:7) |>
@@ -245,7 +291,7 @@ rm(CRAPome_results)
 
 Identify proteins in **> 5%** of CRAPome studies and remove them
 
-```r
+```{r Apply 5 Percent CRAPome filter, eval = T, include = T, message = F, warning = F, echo = T}
 Crapome_hits <- Crapome_results |>
   dplyr::filter(Num_Exp_Found <= 35.8) |> # fewer than 5% of experiments
   dplyr::select(Mapped_Gene_Symbol) |>
@@ -253,11 +299,17 @@ Crapome_hits <- Crapome_results |>
   as.character()
 ```
 
-### Apply filtering to TSCs
+### Annotate Dataset
 
-Use CRAPome list to annotate the TSC data
+Annotate the whole dataset using the filters above:
 
-```r
++ CRAPome hits comprise all the potential candidates **after** having accounted for:
+
+  - the heuristic counts method
+  - contaminants identified by literature review
+  - proteins commonly identified in the CRAPome
+
+```{r Apply Heuristic Filters, eval = T, include = T, message = F, warning = F, echo = T}
 ALL_DF_filtered <- ALL_DF |>
   dplyr::mutate(poi = 'Background', .after = MouseGeneID) |>
   dplyr::full_join(Crapome_hits |>
@@ -274,7 +326,13 @@ ALL_DF_filtered <- ALL_DF |>
   dplyr::select(-Crapome_hits)
 ```
 
-## Upload GO Results {.tabset .tabset-pills .tabset-fade}
+## Upload GO Results
+
+```{r, results='asis', echo=FALSE}
+if (knitr::is_html_output()) {
+  cat('## Upload GO Results {.tabset .tabset-pills .tabset-fade}\n')
+}
+```
 
 Upload the result `.txt` files from the `geneontology.org` query
 
@@ -282,8 +340,8 @@ Upload the result `.txt` files from the `geneontology.org` query
 
 Load and wrangle cell components gene ontology results (in Endo package)
 
-```r
-data("GO_CC_results")
+```{r GO CC Results, eval = T, include = T, message = F, warning = F, echo = T}
+Endo::data("GO_CC_results")
 
 GO_CC_results <- GO_CC_results |> 
   dplyr::rename_with(
@@ -334,12 +392,13 @@ GO_CC_results <- GO_CC_results |>
     ) # sort by the highest FE and lowest adjusted p-value
 ```
 
+
 ### Biological Process Results
 
 Load and wrangle biological process gene ontology results (in Endo package)
 
-```r
-data("GO_BP_results")
+```{r GO BP Results, eval = T, include = T, message = F, warning = F, echo = T}
+Endo::data("GO_BP_results")
 
 GO_BP_results <- GO_BP_results |> 
   dplyr::rename_with(
@@ -394,8 +453,8 @@ GO_BP_results <- GO_BP_results |>
 
 Load and wrangle molecular function gene ontology results (in Endo package)
 
-```r
-data("GO_MF_results")
+```{r GO MF Results, eval = T, include = T, message = F, warning = F, echo = T}
+Endo::data("GO_MF_results")
 
 GO_MF_results <- GO_MF_results |> 
   dplyr::rename_with(
@@ -445,16 +504,23 @@ GO_MF_results <- GO_MF_results |>
     ) # sort by the highest FE and lowest adjusted p-value
 ```
 
+
 ### Combine the Results
 
-```r
+```{r Combine GO Results, eval = T, include = T, message = F, warning = F, echo = T}
 GO_results <- GO_BP_results |>
   dplyr::full_join(GO_CC_results) |>
   dplyr::full_join(GO_MF_results) |>
   dplyr::filter(!grepl(GO_Term, pattern = 'unclassified', ignore.case = T))
 ```
 
-## Integrate with Custom GO Query Function {.tabset .tabset-pills .tabset-fade}
+## Integrate with Custom GO Query Function
+
+```{r, results='asis', echo=FALSE}
+if (knitr::is_html_output()) {
+  cat('## Integrate with Custom GO Query Function {.tabset .tabset-pills .tabset-fade}\n')
+}
+```
 
 Call a custom function created to aggregate all GO information for a provided
 list of gene/protein identifiers
@@ -465,13 +531,13 @@ list of gene/protein identifiers
 
 Use the `TMEM` package query function to acquire `GO` info for plotting
 
-```r
+```{r Query BioConductor and GO dbs, eval = T, include = T, message = F, warning = F, echo = T}
 x <- TMEM::get_GO_info(list_of_interest = Crapome_hits, species = 'human')
 ```
 
 ### Integrate Query Results into Counts DF
 
-```r
+```{r Integrate Query Results into Counts DF, eval = T, include = T, message = F, warning = F, echo = T}
 GO_info_by_term_df_sig <- GO_results |>
   dplyr::mutate(db = 'geneontology.org') |>
   dplyr::full_join(x$GO_info_by_term_df |> 
@@ -493,7 +559,13 @@ GO_info_by_term_df_sig <- GO_results |>
   ) # create a statistical significance column for filtering/annotation
 ```
 
-## Plot Results {.tabset .tabset-pills .tabset-fade}
+## Plot Results
+
+```{r, results='asis', echo=FALSE}
+if (knitr::is_html_output()) {
+  cat('## Plot Results {.tabset .tabset-pills .tabset-fade}\n')
+}
+```
 
 Create DFs for each plot
 
@@ -501,7 +573,7 @@ Create DFs for each plot
 
 + Full overview
 
-```r
+```{r Full Plot Prep, eval = T, include = T, message = F, warning = F, echo = T}
 ## redefine protiens of interest for labeling (control baits)
 ALL_DF_filtered_full <- ALL_DF_filtered |>
   dplyr::mutate(
@@ -514,74 +586,72 @@ ALL_DF_filtered_full <- ALL_DF_filtered |>
     ) # full scatter
 ```
 
-```r
-ggplot(data = ALL_DF_filtered_full) +
-  geom_point(data = subset(ALL_DF_filtered_full,
+```{r FullScatter, eval = T, include = T, message = F, warning = F, echo = T, render = T, fig.height=10, fig.width=10}
+ggplot2::ggplot(data = ALL_DF_filtered_full) +
+  ggplot2::geom_point(data = subset(ALL_DF_filtered_full,
                            poi == 'Background'),
              aes(x = ControlAvg,
                  y = TMEMAvg,
                  color = poi), alpha = 0.1, size = 1.5) +
   
-  geom_point(data = subset(ALL_DF_filtered_full,
+  ggplot2::geom_point(data = subset(ALL_DF_filtered_full,
                            poi == 'Candidates'),
              aes(x = ControlAvg,
                  y = TMEMAvg,
                  color = poi), alpha = 0.3, size = 3) +
   
-  geom_point(data = subset(ALL_DF_filtered_full,
+  ggplot2::geom_point(data = subset(ALL_DF_filtered_full,
                            poi == 'Control myc'),
              aes(x = ControlAvg,
                  y = TMEMAvg,
                  color = poi), alpha = 1.0, size = 3) +
   
-  geom_point(data = subset(ALL_DF_filtered_full,
+  ggplot2::geom_point(data = subset(ALL_DF_filtered_full,
                            poi == 'Control V5'),
              aes(x = ControlAvg,
                  y = TMEMAvg,
                  color = poi), alpha = 1.0, size = 3) +
   
-  geom_point(data = subset(ALL_DF_filtered_full,
+  ggplot2::geom_point(data = subset(ALL_DF_filtered_full,
                            poi == 'TMEM184B'),
              aes(x = ControlAvg,
                  y = TMEMAvg,
                  color = poi), alpha = 1.0, size = 3) +
-  coord_cartesian(xlim = c(0,17), ylim = c(0,17)) +
-  labs(title = 'TMEM184B IPMS Total Spectral Counts',
+  ggplot2::coord_cartesian(xlim = c(0,17), ylim = c(0,17)) +
+  ggplot2::labs(title = 'TMEM184B IPMS Total Spectral Counts',
        x = 'Average Control IP Prey Spectra (TSC)',
        y = 'Average TMEM184B IP Prey Spectra (TSC)',
        col = 'Protein\nCategory') +
-  #guides(col = 'none')+
-  geom_abline(slope = 2,
+  #ggplot2::guides(col = 'none')+
+  ggplot2::geom_abline(slope = 2,
               intercept = 0,
               linetype = 'dashed',
               color = 'black') +
-  geom_text(x = 6.5,
+  ggplot2::geom_text(x = 6.5,
             y = 15,
             color = 'black',
             label = 'FC \u2265 2.0',
             fontface = 'bold',
             size = 4.5) +
-  scale_color_manual(
+  ggplot2::scale_color_manual(
     values = c('gray48', 'navy', 'green1', 'deeppink3', 'darkgoldenrod3')
     ) +
-  theme_classic()+
-  theme(panel.grid = element_blank(),
-        plot.title = element_text(face = 'bold', hjust = 0.5, size = 20),
-        axis.text = element_text(face = 'bold', size = 12),
-        axis.title = element_text(face = 'bold', size = 15),
-        legend.text = element_text(face = 'bold', size = 14),
-        legend.title = element_blank(),
+  ggplot2::theme_classic()+
+  ggplot2::theme(panel.grid = ggplot2::element_blank(),
+        plot.title = ggplot2::element_text(face = 'bold', hjust = 0.5, size = 20),
+        axis.text = ggplot2::element_text(face = 'bold', size = 12),
+        axis.title = ggplot2::element_text(face = 'bold', size = 15),
+        legend.text = ggplot2::element_text(face = 'bold', size = 14),
+        legend.title = ggplot2::element_blank(),
         legend.position = c(0.85, 0.5)
         )
 ```
-
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_plots/Full%20Scatter-1.jpeg)<!-- -->
 
 ### vATPase Scatter (zoom)
 
 + vATPase hits
 
-```r
+```{r vATPaseScatterZoom Prep, eval = T, include = T, message = F, warning = F, echo = T}
 ALL_DF_filtered_vATPASE_acidification <- ALL_DF_filtered |> 
   dplyr::mutate(poi = dplyr::case_when(
     
@@ -601,83 +671,81 @@ ALL_DF_filtered_vATPASE_acidification <- ALL_DF_filtered |>
       poi)) # vATPase scatter
 ```
 
-```r
-ggplot(data = ALL_DF_filtered_vATPASE_acidification) +
+```{r vATPaseScatter_Zoom, eval = T, include = T, message = F, warning = F, echo = T, render = T, fig.height=10, fig.width=10}
+ggplot2::ggplot(data = ALL_DF_filtered_vATPASE_acidification) +
   
-  geom_point(data = subset(
+  ggplot2::geom_point(data = subset(
     ALL_DF_filtered_vATPASE_acidification,
     poi == 'Background'),
                       aes(x = ControlAvg,
                           y = TMEMAvg,
                           color = poi), alpha = 0.1, size = 1) +
   
-  geom_point(data = subset(
+  ggplot2::geom_point(data = subset(
     ALL_DF_filtered_vATPASE_acidification,
     poi == 'Candidates'),
                       aes(x = ControlAvg,
                           y = TMEMAvg,
                           color = poi), alpha = 0.5, size = 3) +
   
-  geom_point(data = subset(
+  ggplot2::geom_point(data = subset(
     ALL_DF_filtered_vATPASE_acidification,
     poi == 'Other vATPase\nComplex Subunits'),
                       aes(x = ControlAvg,
                           y = TMEMAvg,
                           color = poi), alpha = 1.0, size = 3) +
   
-  geom_point(data = subset(
+  ggplot2::geom_point(data = subset(
     ALL_DF_filtered_vATPASE_acidification,
     poi == 'Candidates in\nVacuolar Acidification'),
                       aes(x = ControlAvg,
                           y = TMEMAvg,
                           color = poi), alpha = 1.0, size = 3) +
   
-  geom_point(data = subset(
+  ggplot2::geom_point(data = subset(
     ALL_DF_filtered_vATPASE_acidification,
     poi == 'TMEM184B'),
              aes(x = ControlAvg,
                  y = TMEMAvg,
                  color = poi), alpha = 1.0) +
   
-  coord_cartesian(xlim = c(0,1), ylim = c(0,1)) +
-  labs(title = 'TMEM184B IPMS Total Spectral Counts',
+  ggplot2::coord_cartesian(xlim = c(0,1), ylim = c(0,1)) +
+  ggplot2::labs(title = 'TMEM184B IPMS Total Spectral Counts',
        x = 'Average Control IP Prey Spectra (TSC)',
        y = 'Average TMEM184B IP Prey Spectra (TSC)',
        col = 'Protein\nCategory') +
-  #guides(col = 'none')+
-  geom_abline(slope = 2,
+  #ggplot2::guides(col = 'none')+
+  ggplot2::geom_abline(slope = 2,
                        intercept = 0,
                        linetype = 'dashed',
                        color = 'black',
                        size = 1) +
-  geom_text(x = 1.2,
+  ggplot2::geom_text(x = 1.2,
                      y = 3,
                      color = 'black',
                      label = 'FC \u2265 2.0',
                      fontface = 'bold',
                      size = 4.5) +
-  scale_color_manual(
+  ggplot2::scale_color_manual(
     values = c('gray48', 'dodgerblue', 'navy', 'magenta', 'darkgoldenrod3')
     ) +
-  theme_classic()+
-  theme(
-    panel.grid = element_blank(),
-    plot.title = element_text(face = 'bold', hjust = 0.5, size = 20),
-    axis.text = element_text(face = 'bold', size = 12),
-    axis.title = element_text(face = 'bold', size = 15),
-    legend.text = element_text(face = 'bold', size = 14),
-    legend.title = element_blank(),
+  ggplot2::theme_classic()+
+  ggplot2::theme(
+    panel.grid = ggplot2::element_blank(),
+    plot.title = ggplot2::element_text(face = 'bold', hjust = 0.5, size = 20),
+    axis.text = ggplot2::element_text(face = 'bold', size = 12),
+    axis.title = ggplot2::element_text(face = 'bold', size = 15),
+    legend.text = ggplot2::element_text(face = 'bold', size = 14),
+    legend.title = ggplot2::element_blank(),
     legend.position = c(0.84, 0.5)
   )
 ```
-
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_plots/vATPase%20Scatter%20zoom-1.jpeg)<!-- -->
 
 ### Regulation of Macroautophagy (zoom)
 
 + Macroautophagy hits
 
-```r
+```{r Macro Prep, eval = T, include = T, message = F, warning = F, echo = T, render = T, fig.height=10, fig.width=10}
 ALL_DF_filterd_reg_macro <- ALL_DF_filtered |>
   dplyr::mutate(poi = dplyr::case_when(
     
@@ -697,74 +765,73 @@ ALL_DF_filterd_reg_macro <- ALL_DF_filtered |>
     ) # regulation of macroautophagy
 ```
 
-```r
-ggplot(data = ALL_DF_filterd_reg_macro) +
+```{r MacroScatter_Zoom, eval = T, include = T, message = F, warning = F, echo = T, render = T, fig.height=10, fig.width=10}
+ggplot2::ggplot(data = ALL_DF_filterd_reg_macro) +
   
-  geom_point(data = subset(
+  ggplot2::geom_point(data = subset(
     ALL_DF_filterd_reg_macro,
     poi == 'Background'),
              aes(x = ControlAvg,
                  y = TMEMAvg,
                  color = poi), alpha = 0.1, size = 1) +
   
-  geom_point(data = subset(
+  ggplot2::geom_point(data = subset(
     ALL_DF_filterd_reg_macro,
     poi == 'Candidates'),
              aes(x = ControlAvg,
                  y = TMEMAvg,
                  color = poi), alpha = 0.5, size = 3) +
   
-  geom_point(data = subset(
+  ggplot2::geom_point(data = subset(
     ALL_DF_filterd_reg_macro,
     poi == 'Candidates in\nRegulation of Macroautophagy'),
              aes(x = ControlAvg,
                  y = TMEMAvg,
                  color = poi), alpha = 1.0, size = 3) +
   
-  geom_point(data = subset(
+  ggplot2::geom_point(data = subset(
     ALL_DF_filterd_reg_macro,
     poi == 'TMEM184B'),
              aes(x = ControlAvg,
                  y = TMEMAvg,
                  color = poi), alpha = 1.0, size = 3) +
   
-  coord_cartesian(xlim = c(0,1), ylim = c(0,1)) +
-  labs(title = 'TMEM184B IPMS Total Spectral Counts',
+  ggplot2::coord_cartesian(xlim = c(0,1), ylim = c(0,1)) +
+  ggplot2::labs(title = 'TMEM184B IPMS Total Spectral Counts',
        x = 'Average Control IP Prey Spectra (TSC)',
        y = 'Average TMEM184B IP Prey Spectra (TSC)',
        col = 'Protein\nCategory') +
-  #guides(col = 'none')+
-  geom_abline(slope = 2,
+  #ggplot2::guides(col = 'none')+
+  ggplot2::geom_abline(slope = 2,
               intercept = 0,
               linetype = 'dashed',
               color = 'black',
               size = 1) +
-  geom_text(x = 1.2,
+  ggplot2::geom_text(x = 1.2,
             y = 3,
             color = 'black',
             label = 'FC \u2265 2.0',
             fontface = 'bold',
             size = 4.5) +
-  scale_color_manual(
+  ggplot2::scale_color_manual(
     values = c('gray48', 'dodgerblue', 'navy', 'darkgoldenrod3')
     ) +
-  theme_classic()+
-  theme(panel.grid = element_blank(),
-        plot.title = element_text(face = 'bold', hjust = 0.5, size = 20),
-        axis.text = element_text(face = 'bold', size = 12),
-        axis.title = element_text(face = 'bold', size = 15),
-        legend.text = element_text(face = 'bold', size = 14),
-        legend.title = element_blank(),
+  ggplot2::theme_classic()+
+  ggplot2::theme(panel.grid = ggplot2::element_blank(),
+        plot.title = ggplot2::element_text(face = 'bold', hjust = 0.5, size = 20),
+        axis.text = ggplot2::element_text(face = 'bold', size = 12),
+        axis.title = ggplot2::element_text(face = 'bold', size = 15),
+        legend.text = ggplot2::element_text(face = 'bold', size = 14),
+        legend.title = ggplot2::element_blank(),
         legend.position = c(0.75, 0.3)
   )
 ```
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_plots/Macro%20zoom-1.jpeg)<!-- -->
 
 ### Protein Transport (zoom)
 
 + Intracellular protein transport hits
 
-```r
+```{r ProteinTransport Prep, eval = T, include = T, message = F, warning = F, echo = T, render = T, fig.height=10, fig.width=10}
 ALL_DF_filterd_IC_protein_transport <- ALL_DF_filtered |>
   dplyr::mutate(
     poi = dplyr::case_when(
@@ -779,68 +846,68 @@ ALL_DF_filterd_IC_protein_transport <- ALL_DF_filtered |>
       poi)) # protein transport
 ```
 
-```r
-ggplot(data = ALL_DF_filterd_IC_protein_transport) +
+
+```{r ProteinTransport_Zoom, eval = T, include = T, message = F, warning = F, echo = T, render = T, fig.height=10, fig.width=10}
+ggplot2::ggplot(data = ALL_DF_filterd_IC_protein_transport) +
   
-  geom_point(data = subset(ALL_DF_filterd_IC_protein_transport,
+  ggplot2::geom_point(data = subset(ALL_DF_filterd_IC_protein_transport,
                            poi == 'Background'),
              aes(x = ControlAvg,
                  y = TMEMAvg,
                  color = poi), alpha = 0.1, size = 1) +
   
-  geom_point(data = subset(ALL_DF_filterd_IC_protein_transport,
+  ggplot2::geom_point(data = subset(ALL_DF_filterd_IC_protein_transport,
                            poi == 'Candidates'),
              aes(x = ControlAvg,
                  y = TMEMAvg,
                  color = poi), alpha = 0.5, size = 3) +
   
-  geom_point(data = subset(ALL_DF_filterd_IC_protein_transport,
+  ggplot2::geom_point(data = subset(ALL_DF_filterd_IC_protein_transport,
                            poi == 'Candidates in\nIntracellular Transport'),
              aes(x = ControlAvg,
                  y = TMEMAvg,
                  color = poi), alpha = 1.0, size = 3) +
   
-  geom_point(data = subset(ALL_DF_filterd_IC_protein_transport,
+  ggplot2::geom_point(data = subset(ALL_DF_filterd_IC_protein_transport,
                            poi == 'TMEM184B'),
              aes(x = ControlAvg,
                  y = TMEMAvg,
                  color = poi), alpha = 1.0, size = 3) +
   
-  coord_cartesian(xlim = c(0,1), ylim = c(0,1)) +
-  labs(title = 'TMEM184B IPMS Total Spectral Counts',
+  ggplot2::coord_cartesian(xlim = c(0,1), ylim = c(0,1)) +
+  ggplot2::labs(title = 'TMEM184B IPMS Total Spectral Counts',
        x = 'Average Control IP Prey Spectra (TSC)',
        y = 'Average TMEM184B IP Prey Spectra (TSC)',
        col = 'Protein\nCategory') +
-  #guides(col = 'none')+
-  geom_abline(slope = 2,
+  #ggplot2::guides(col = 'none')+
+  ggplot2::geom_abline(slope = 2,
               intercept = 0,
               linetype = 'dashed',
               color = 'black',
               size = 1) +
-  geom_text(x = 1.2,
+  ggplot2::geom_text(x = 1.2,
             y = 3,
             color = 'black',
             label = 'FC \u2265 2.0',
             fontface = 'bold',
             size = 4.5) +
-  scale_color_manual(
+  ggplot2::scale_color_manual(
     values = c('gray48', 'dodgerblue', 'navy', 'darkgoldenrod3')
     ) +
-  theme_classic()+
-  theme(panel.grid = element_blank(),
-        plot.title = element_text(face = 'bold', hjust = 0.5, size = 20),
-        axis.text = element_text(face = 'bold', size = 12),
-        axis.title = element_text(face = 'bold', size = 15),
-        legend.text = element_text(face = 'bold', size = 14),
-        legend.title = element_blank(),
+  ggplot2::theme_classic()+
+  ggplot2::theme(panel.grid = ggplot2::element_blank(),
+        plot.title = ggplot2::element_text(face = 'bold', hjust = 0.5, size = 20),
+        axis.text = ggplot2::element_text(face = 'bold', size = 12),
+        axis.title = ggplot2::element_text(face = 'bold', size = 15),
+        legend.text = ggplot2::element_text(face = 'bold', size = 14),
+        legend.title = ggplot2::element_blank(),
         legend.position = c(0.78, 0.4)
   )
 ```
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_plots/IC%20transport%20zoom-1.jpeg)<!-- -->
 
 ### GO Bar Plot
 
-```r
+```{r GO_Bar_Plot, eval = T, include = T, message = F, warning = F, echo = T, render = T, fig.height=10, fig.width=10}
 GO_info_by_term_df_sig |> 
   dplyr::filter(sig != 'NS') |> 
   dplyr::arrange(desc(fold.Enrichment)) |> 
@@ -858,64 +925,63 @@ GO_info_by_term_df_sig |>
   # 
   #     GO_Term)) |>
   
-  ggplot(aes(x = -log10(FDR),
+  ggplot2::ggplot(aes(x = -log10(FDR),
              y = forcats::fct_rev(forcats::fct_infreq(GO_Term, -log10(FDR))),
              color = 'black',
              fill = GO_Type,
              alpha = fold.Enrichment)) +
   
-  geom_bar(color = 'black', stat = 'identity') +
-  labs(title = 'TMEM184B IPMS Candidate GO Analysis',
+  ggplot2::geom_bar(color = 'black', stat = 'identity') +
+  ggplot2::labs(title = 'TMEM184B IPMS Candidate GO Analysis',
        x = bquote(~ -log[10] ~ '(Adj.P-value)'),
          # expression(paste0("-log",[10],'(Adj.P-value)')),
        y = 'GO Term',
        fill = 'GO\nCategory',
        size = '# Genes in List',
        alpha = 'Fold\nEnrichment') +
-  geom_vline(xintercept = -log10(0.05), linetype = 'dashed', color = 'black') +
-  geom_text(aes(label = 'FDR\n\u2264 0.05'),
+  ggplot2::geom_vline(xintercept = -log10(0.05), linetype = 'dashed', color = 'black') +
+  ggplot2::geom_text(aes(label = 'FDR\n\u2264 0.05'),
             size = 5,
             color = 'black',
             x = 3,
             y = 4,
             show.legend = FALSE) +
-  geom_text(aes(label = sig,
+  ggplot2::geom_text(aes(label = sig,
                 fontface = 'bold'),
             size = 2.5,
             color = 'black',
             angle = 90,
             vjust = 1,
             alpha = 1) +
-  # geom_text(aes(label = paste0(Overlap, ' / ', GO_Term_Size),
+  # ggplot2::geom_text(aes(label = paste0(Overlap, ' / ', GO_Term_Size),
   #               fontface = 'bold'),
   #           hjust = 0,
   #           size = 5,
   #           color = 'black',
   #           alpha = 0.7) +
-  theme_bw()+
-  theme(plot.title = element_text(face = 'bold', size = 13, hjust = 0.5),
-        axis.title = element_text(face = 'bold', size = 12),
-        axis.text = element_text(face = 'bold', size = 10, vjust = 0.5),
-        axis.ticks = element_line(linetype = 'solid'),
-        legend.title = element_text(face = 'bold', size = 10),
-        legend.text = element_text(face = 'bold', size = 9)) +
-  guides(col = 'none',
-         fill = guide_legend(
+  ggplot2::theme_bw()+
+  ggplot2::theme(plot.title = ggplot2::element_text(face = 'bold', size = 13, hjust = 0.5),
+        axis.title = ggplot2::element_text(face = 'bold', size = 12),
+        axis.text = ggplot2::element_text(face = 'bold', size = 10, vjust = 0.5),
+        axis.ticks = ggplot2::element_line(linetype = 'solid'),
+        legend.title = ggplot2::element_text(face = 'bold', size = 10),
+        legend.text = ggplot2::element_text(face = 'bold', size = 9)) +
+  ggplot2::guides(col = 'none',
+         fill = ggplot2::guide_legend(
            override.aes = list(
              size = 2.5, 
              shape = 19,
              color = 'black',
              fill = c('navy', 'darkgoldenrod3', 'darkgray'))
            ),
-         alpha = guide_legend(override.aes = list(size = 2.5, shape = 19))) +
-  scale_color_manual(values = c('navy', 'darkgoldenrod3', 'darkgray')) +
-  scale_fill_manual(values = c('navy', 'darkgoldenrod3', 'darkgray'))
+         alpha = ggplot2::guide_legend(override.aes = list(size = 2.5, shape = 19))) +
+  ggplot2::scale_color_manual(values = c('navy', 'darkgoldenrod3', 'darkgray')) +
+  ggplot2::scale_fill_manual(values = c('navy', 'darkgoldenrod3', 'darkgray'))
 ```
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_plots/GO%20Bar%20Plot-1.jpeg)<!-- -->
 
 ### GO CC Bar Plot
 
-```r
+```{r GO_CC_Bar_Plot, eval = T, include = T, message = F, warning = F, echo = T, render = T, fig.height=10, fig.width=10}
 GO_info_by_term_df_sig |> 
   dplyr::filter(sig != "NS") |> 
   dplyr::arrange(desc(fold.Enrichment)) |> 
@@ -933,42 +999,42 @@ GO_info_by_term_df_sig |>
       GO_Term)
     
     ) |>
-  ggplot(aes(x = -log10(FDR),
+  ggplot2::ggplot(aes(x = -log10(FDR),
              y = forcats::fct_rev(forcats::fct_infreq(GO_Term, -log10(FDR))),
              color = 'navy',
              fill = 'navy',
              alpha = -log10(FDR))) +
-  geom_bar(color = 'black',
+  ggplot2::geom_bar(color = 'black',
            stat = 'identity') +
-  labs(title = 'TMEM184B IPMS Candidate GO Analysis',
+  ggplot2::labs(title = 'TMEM184B IPMS Candidate GO Analysis',
        x = bquote(~ -log[10] ~ '(Adj.P-value)'),
        y = 'GO Cell Component Term',
        alpha = bquote(~ -log[10] ~ '(Adj.P-value)')) +
-  theme_bw()+
-  theme(plot.title = element_text(face = 'bold', size = 13),
-        axis.title = element_text(face = 'bold', size = 12),
-        axis.text = element_text(face = 'bold', size = 12, vjust = 0.5),
-        axis.ticks = element_line(linetype = 'solid'),
-        legend.title = element_text(face = 'bold', size = 12),
-        legend.text = element_text(face = 'bold', size = 12)) +
-  scale_color_manual(values = c('navy')) +
-  scale_fill_manual(values = c('navy')) +
-  guides(col = 'none',
+  ggplot2::theme_bw()+
+  ggplot2::theme(plot.title = ggplot2::element_text(face = 'bold', size = 13),
+        axis.title = ggplot2::element_text(face = 'bold', size = 12),
+        axis.text = ggplot2::element_text(face = 'bold', size = 12, vjust = 0.5),
+        axis.ticks = ggplot2::element_line(linetype = 'solid'),
+        legend.title = ggplot2::element_text(face = 'bold', size = 12),
+        legend.text = ggplot2::element_text(face = 'bold', size = 12)) +
+  ggplot2::scale_color_manual(values = c('navy')) +
+  ggplot2::scale_fill_manual(values = c('navy')) +
+  ggplot2::guides(col = 'none',
          fill = 'none',
-         alpha = guide_legend(
+         alpha = ggplot2::guide_legend(
            
            override.aes = list(size = 2.5,
                                shape = 19,
                                color = 'black',
                                fill = 'navy'))) +
-  geom_vline(xintercept = -log10(0.05), linetype = 'dashed', color = 'black') +
-  geom_text(aes(label = 'FDR\n\u2264 0.05'),
+  ggplot2::geom_vline(xintercept = -log10(0.05), linetype = 'dashed', color = 'black') +
+  ggplot2::geom_text(aes(label = 'FDR\n\u2264 0.05'),
             size = 5,
             color = 'black',
             x = 3,
             y = 4,
             show.legend = FALSE) +
-  geom_text(aes(label = sig,
+  ggplot2::geom_text(aes(label = sig,
                 fontface = 'bold'),
             size = 5,
             color = 'black',
@@ -976,11 +1042,10 @@ GO_info_by_term_df_sig |>
             vjust = 1,
             alpha = 1)
 ```
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_plots/GO%20CC%20Bar%20Plot-1.jpeg)<!-- -->
 
 ### GO BP Bar Plot
 
-```r
+```{r GO_BP_Bar_Plot, eval = T, include = T, message = F, warning = F, echo = T, render = T, fig.height=10, fig.width=10}
 GO_info_by_term_df_sig |> 
   dplyr::filter(sig != "NS") |> 
   dplyr::arrange(desc(fold.Enrichment)) |> 
@@ -997,39 +1062,39 @@ GO_info_by_term_df_sig |>
       
       GO_Term)
     ) |>
-  ggplot(aes(x = -log10(FDR),
+  ggplot2::ggplot(aes(x = -log10(FDR),
              y = forcats::fct_rev(forcats::fct_infreq(GO_Term, -log10(FDR))),
              color = 'navy',
              fill = 'navy',
              alpha = -log10(FDR))) +
-  geom_bar(color = 'black', stat = 'identity') +
-  labs(title = 'TMEM184B IPMS Candidate GO Analysis',
+  ggplot2::geom_bar(color = 'black', stat = 'identity') +
+  ggplot2::labs(title = 'TMEM184B IPMS Candidate GO Analysis',
        x = bquote(~ -log[10] ~ '(Adj.P-value)'),
        y = 'GO Biological Process Term',
        alpha = bquote(~ -log[10] ~ '(Adj.P-value)')) +
-  theme_bw()+
-  theme(plot.title = element_text(face = 'bold', size = 13),
-        axis.title = element_text(face = 'bold', size = 12),
-        axis.text = element_text(face = 'bold', size = 12, vjust = 0.5),
-        axis.ticks = element_line(linetype = 'solid'),
-        legend.text = element_text(face = 'bold', size = 12),
-        legend.title = element_text(face = 'bold', size = 12)) +
-  scale_color_manual(values = c('navy')) +
-  scale_fill_manual(values = c('navy')) +
-  guides(col = 'none',
+  ggplot2::theme_bw()+
+  ggplot2::theme(plot.title = ggplot2::element_text(face = 'bold', size = 13),
+        axis.title = ggplot2::element_text(face = 'bold', size = 12),
+        axis.text = ggplot2::element_text(face = 'bold', size = 12, vjust = 0.5),
+        axis.ticks = ggplot2::element_line(linetype = 'solid'),
+        legend.text = ggplot2::element_text(face = 'bold', size = 12),
+        legend.title = ggplot2::element_text(face = 'bold', size = 12)) +
+  ggplot2::scale_color_manual(values = c('navy')) +
+  ggplot2::scale_fill_manual(values = c('navy')) +
+  ggplot2::guides(col = 'none',
          fill = 'none',
-         alpha = guide_legend(override.aes = list(size = 2.5,
+         alpha = ggplot2::guide_legend(override.aes = list(size = 2.5,
                                                   shape = 19,
                                                   color = 'black',
                                                   fill = 'navy'))) +
-  geom_vline(xintercept = -log10(0.05), linetype = 'dashed', color = 'black') +
-  geom_text(aes(label = 'FDR\n\u2264 0.05'),
+  ggplot2::geom_vline(xintercept = -log10(0.05), linetype = 'dashed', color = 'black') +
+  ggplot2::geom_text(aes(label = 'FDR\n\u2264 0.05'),
             size = 5,
             color = 'black',
             x = 2.25,
             y = 4,
             show.legend = FALSE) +
-  geom_text(aes(label = sig,
+  ggplot2::geom_text(aes(label = sig,
                 fontface = 'bold'),
             size = 5,
             color = 'black',
@@ -1037,4 +1102,4 @@ GO_info_by_term_df_sig |>
             vjust = 1,
             alpha = 1)
 ```
-![](https://github.com/eriklarsen4/Endo/blob/master/IPMS_plots/GO%20BP%20Bar%20Plot-1.jpeg)<!-- -->
+

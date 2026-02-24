@@ -3,18 +3,40 @@ title: "FIREpHly"
 author: "Erik Larsen"
 date: "2025-01-22"
 output:
-    html_document:
-    toc: yes
-    toc_float: 
-      collapsed: yes
-      numbered_sections: yes
-    code_folding: hide
+  html_document:
+    toc: true
+    fig_width: 10
+    fig_height: 10
+  pdf_document:
+    fig_width: 10
+    fig_height: 10
+    latex_engine: xelatex
+  md_document:
+    variant: gfm
+vignette: >
+  %\VignetteIndexEntry{IPMS vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
-```{r knitr opts, include = F}
-knitr::opts_chunk$set(dev = 'jpeg', fig.path = '~/FIREpHly_plots/')
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 10,
+  fig.height = 10,
+  dev = c("png", "pdf"),
+  fig.path = "figures/"
+)
 ```
 
-### Overview {.tabset .tabset-pills .tabset-fade}
+### Overview
+
+```{r, results='asis', echo=FALSE}
+if (knitr::is_html_output()) {
+  cat('### Overview {.tabset .tabset-pills .tabset-fade}\n')
+}
+```
 
 This markdown was developed to formally document the data analysis of FIRE-pHly 
 data for **Dr. Martha Bhattacharya's lab** at the **University of Arizona** for
@@ -23,7 +45,13 @@ the endolysosomal paper under revision (2025-02-10).
 Until an image is built, the `R version` used was **R 4.3.2** with the
 packages installed below
 
-### Set up Environment {.tabset .tabset-pills .tabset-fade}
+### Set up Environment
+
+```{r, results='asis', echo=FALSE}
+if (knitr::is_html_output()) {
+  cat('### Set up Environment {.tabset .tabset-pills .tabset-fade}\n')
+}
+```
 
 #### Attach packages
 
@@ -46,12 +74,18 @@ for ( package in packages ) {
 }
 ```
 
-### Import FIRE-pHly Data {.tabset .tabset-pills .tabset-fade}
+### Import FIRE-pHly Data
+
+```{r, results='asis', echo=FALSE}
+if (knitr::is_html_output()) {
+  cat('### Import FIRE-pHly Data {.tabset .tabset-pills .tabset-fade}\n')
+}
+```
 
 <span style="color:black;font-size: 18px">Directly load the `tidied_puncta_data`</span>
 
 ```{r FIREpHly data load, include = T, message = F, warning = F, echo = T}
-data(tidied_puncta_data)
+Endo::data(tidied_puncta_data)
 Puncta_data <- tidied_puncta_data
 rm(tidied_puncta_data)
 ```
@@ -60,13 +94,19 @@ rm(tidied_puncta_data)
 from separate Excel sheets into the data object, `tidied_puncta_data`, have been
 included in the [R Markdown vignette](https://github.com/eriklarsen4/Endo/blob/dev/vignettes/FIREpHly.Rmd)</span>
 
-### Visualize {.tabset .tabset-pills .tabset-fade}
+### Visualize
+
+```{r, results='asis', echo=FALSE}
+if (knitr::is_html_output()) {
+  cat('### Visualize {.tabset .tabset-pills .tabset-fade}\n')
+}
+```
 
 <span style="color:black;font-size: 16px">Investigate the distributions of measured variables</span>
 
 #### Puncta Area Histogram
 
-```{r Puncta Area Histogram full, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
+```{r Puncta_Area_Histogram_full, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(GreenRed_Ratio = as.numeric(GreenRed_Ratio),
@@ -76,32 +116,32 @@ Puncta_data |>
   # dplyr::filter(GreenRed_Ratio < 25) |>
   # dplyr::filter(Puncta_Area < 2) |>
   dplyr::group_by(Genotype) |>
-  ggplot(aes(x = Puncta_Area, col = Genotype, fill = Genotype, alpha = 0.5)) +
-  geom_histogram(binwidth = 0.01) +
-  labs(title = 'Hippocampal Neuron Puncta Area Distributions',
+  ggplot2::ggplot(aes(x = Puncta_Area, col = Genotype, fill = Genotype, alpha = 0.5)) +
+  ggplot2::geom_histogram(binwidth = 0.01) +
+  ggplo2::labs(title = 'Hippocampal Neuron Puncta Area Distributions',
        x = paste0('Neuronal Puncta Area (', '&mu;m<sup>2</sup>', ')'),
        y = 'Count\n(binwidth = 0.01)') +
-  guides(col = 'none', alpha = 'none')+
-  theme_bw() +
-  theme(plot.title = element_text(face = 'bold', size = 13),
-        axis.title.x = element_markdown(face = 'bold', size = 11),
-        axis.title.y = element_text(face = 'bold', size = 11),
-        axis.text = element_text(face = 'bold', size = 10),
-        axis.ticks = element_line(color = 'black'),
-        panel.grid.minor = element_blank(),
+  ggplot2::guides(col = 'none', alpha = 'none')+
+  ggplot2::theme_bw() +
+  ggplot2::theme(plot.title = ggplot2::element_text(face = 'bold', size = 13),
+        axis.title.x = ggplot2::element_markdown(face = 'bold', size = 11),
+        axis.title.y = ggplot2::element_text(face = 'bold', size = 11),
+        axis.text = ggplot2::element_text(face = 'bold', size = 10),
+        axis.ticks = ggplot2::element_line(color = 'black'),
+        panel.grid.minor = ggplot2::element_blank(),
         legend.position = c(0.85, 0.5),
-        legend.title = element_text(face = 'bold', size = 10),
-        legend.text = element_text(face = 'bold', size = 10)
+        legend.title = ggplot2::element_text(face = 'bold', size = 10),
+        legend.text = ggplot2::element_text(face = 'bold', size = 10)
   ) +
-  scale_color_manual(values = c("navy", "darkgoldenrod3")) +
-  scale_fill_manual(values = c("navy", "darkgoldenrod3"))
+  ggplot2::scale_color_manual(values = c("navy", "darkgoldenrod3")) +
+  ggplot2::scale_fill_manual(values = c("navy", "darkgoldenrod3"))
 ```
 
 #### Puncta Area Histogram (zoom)
 
 <span style="color:black;font-size: 16px">Crop to better-discern differences in the majority of the data</span>
 
-```{r Puncta Area Histogram cropped, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
+```{r Puncta_Area_Histogram_cropped, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(GreenRed_Ratio = as.numeric(GreenRed_Ratio),
@@ -111,30 +151,30 @@ Puncta_data |>
   dplyr::filter(GreenRed_Ratio < 25) |>
   dplyr::filter(Puncta_Area < 2) |>
   dplyr::group_by(Genotype) |>
-  ggplot(aes(x = Puncta_Area, col = Genotype, fill = Genotype, alpha = 0.5)) +
-  geom_histogram(binwidth = 0.01) +
-  labs(title = 'Hippocampal Neuron Puncta Area Distributions',
+  ggplot2::ggplot(aes(x = Puncta_Area, col = Genotype, fill = Genotype, alpha = 0.5)) +
+  ggplot2::geom_histogram(binwidth = 0.01) +
+  ggplo2::labs(title = 'Hippocampal Neuron Puncta Area Distributions',
        x = paste0('Neuronal Puncta Area (', '&mu;m<sup>2</sup>', ')'),
        y = 'Count\n(binwidth = 0.01)') +
-  guides(col = 'none', alpha = 'none')+
-  theme_bw() +
-  theme(plot.title = element_text(face = 'bold', size = 13),
-        axis.title.x = element_markdown(face = 'bold', size = 11),
-        axis.title.y = element_text(face = 'bold', size = 11),
-        axis.text = element_text(face = 'bold', size = 10),
-        axis.ticks = element_line(color = 'black'),
-        panel.grid.minor = element_blank(),
+  ggplot2::guides(col = 'none', alpha = 'none')+
+  ggplot2::theme_bw() +
+  ggplot2::theme(plot.title = ggplot2::element_text(face = 'bold', size = 13),
+        axis.title.x = ggplot2::element_markdown(face = 'bold', size = 11),
+        axis.title.y = ggplot2::element_text(face = 'bold', size = 11),
+        axis.text = ggplot2::element_text(face = 'bold', size = 10),
+        axis.ticks = ggplot2::element_line(color = 'black'),
+        panel.grid.minor = ggplot2::element_blank(),
         legend.position = c(0.85, 0.5),
-        legend.title = element_text(face = 'bold', size = 10),
-        legend.text = element_text(face = 'bold', size = 10)
+        legend.title = ggplot2::element_text(face = 'bold', size = 10),
+        legend.text = ggplot2::element_text(face = 'bold', size = 10)
   ) +
-  scale_color_manual(values = c("navy", "darkgoldenrod3")) +
-  scale_fill_manual(values = c("navy", "darkgoldenrod3"))
+  ggplot2::scale_color_manual(values = c("navy", "darkgoldenrod3")) +
+  ggplot2::scale_fill_manual(values = c("navy", "darkgoldenrod3"))
 ```
 
 #### Puncta Area Density
 
-```{r Puncta Area Density full, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
+```{r Puncta_Area_Density_full, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(GreenRed_Ratio = as.numeric(GreenRed_Ratio),
@@ -144,32 +184,32 @@ Puncta_data |>
   # dplyr::filter(GreenRed_Ratio < 25) |>
   # dplyr::filter(Puncta_Area < 2) |>
   dplyr::group_by(Genotype) |>
-  ggplot(aes(x = Puncta_Area, col = Genotype, fill = Genotype)) +
-  geom_density(alpha =  0.5) +
-  labs(title = 'Hippocampal Neuron Puncta Area Density Distributions',
+  ggplot2::ggplot(aes(x = Puncta_Area, col = Genotype, fill = Genotype)) +
+  ggplot2::geom_density(alpha =  0.5) +
+  ggplo2::labs(title = 'Hippocampal Neuron Puncta Area Density Distributions',
        x = paste0('Neuronal Puncta Area (', '&mu;m<sup>2</sup>', ')'),
        y = 'Density') +
-  guides(col = 'none', alpha = 'none')+
-  theme_bw() +
-  theme(plot.title = element_text(face = 'bold', size = 13),
-        axis.title.x = element_markdown(face = 'bold', size = 11),
-        axis.title.y = element_text(face = 'bold', size = 11),
-        axis.text = element_text(face = 'bold', size = 10),
-        axis.ticks = element_line(color = 'black'),
-        panel.grid.minor = element_blank(),
+  ggplot2::guides(col = 'none', alpha = 'none')+
+  ggplot2::theme_bw() +
+  ggplot2::theme(plot.title = ggplot2::element_text(face = 'bold', size = 13),
+        axis.title.x = ggplot2::element_markdown(face = 'bold', size = 11),
+        axis.title.y = ggplot2::element_text(face = 'bold', size = 11),
+        axis.text = ggplot2::element_text(face = 'bold', size = 10),
+        axis.ticks = ggplot2::element_line(color = 'black'),
+        panel.grid.minor = ggplot2::element_blank(),
         legend.position = c(0.80, 0.5),
-        legend.title = element_text(face = 'bold', size = 11),
-        legend.text = element_text(face = 'bold', size = 11)
+        legend.title = ggplot2::element_text(face = 'bold', size = 11),
+        legend.text = ggplot2::element_text(face = 'bold', size = 11)
   ) +
-  scale_color_manual(values = c("navy", "darkgoldenrod3")) +
-  scale_fill_manual(values = c("navy", "darkgoldenrod3"))
+  ggplot2::scale_color_manual(values = c("navy", "darkgoldenrod3")) +
+  ggplot2::scale_fill_manual(values = c("navy", "darkgoldenrod3"))
 ```
 
 #### Puncta Area Density (zoom)
 
 <span style="color:black;font-size: 16px">Crop to better-discern differences in the majority of the data</span>
 
-```{r Puncta Area Density cropped, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
+```{r Puncta_Area_Density_cropped, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(GreenRed_Ratio = as.numeric(GreenRed_Ratio),
@@ -179,30 +219,30 @@ Puncta_data |>
   dplyr::filter(GreenRed_Ratio < 25) |>
   dplyr::filter(Puncta_Area < 2) |>
   dplyr::group_by(Genotype) |>
-  ggplot(aes(x = Puncta_Area, col = Genotype, fill = Genotype)) +
-  geom_density(alpha =  0.5) +
-  labs(title = 'Hippocampal Neuron Puncta Area Density Distributions',
+  ggplot2::ggplot(aes(x = Puncta_Area, col = Genotype, fill = Genotype)) +
+  ggplot2::geom_density(alpha =  0.5) +
+  ggplo2::labs(title = 'Hippocampal Neuron Puncta Area Density Distributions',
        x = paste0('Neuronal Puncta Area (', '&mu;m<sup>2</sup>', ')'),
        y = 'Density') +
-  guides(col = 'none', alpha = 'none')+
-  theme_bw() +
-  theme(plot.title = element_text(face = 'bold', size = 13),
-        axis.title.x = element_markdown(face = 'bold', size = 11),
-        axis.title.y = element_text(face = 'bold', size = 11),
-        axis.text = element_text(face = 'bold', size = 10),
-        axis.ticks = element_line(color = 'black'),
-        panel.grid.minor = element_blank(),
+  ggplot2::guides(col = 'none', alpha = 'none')+
+  ggplot2::theme_bw() +
+  ggplot2::theme(plot.title = ggplot2::element_text(face = 'bold', size = 13),
+        axis.title.x = ggplot2::element_markdown(face = 'bold', size = 11),
+        axis.title.y = ggplot2::element_text(face = 'bold', size = 11),
+        axis.text = ggplot2::element_text(face = 'bold', size = 10),
+        axis.ticks = ggplot2::element_line(color = 'black'),
+        panel.grid.minor = ggplot2::element_blank(),
         legend.position = c(0.80, 0.5),
-        legend.title = element_text(face = 'bold', size = 11),
-        legend.text = element_text(face = 'bold', size = 11)
+        legend.title = ggplot2::element_text(face = 'bold', size = 11),
+        legend.text = ggplot2::element_text(face = 'bold', size = 11)
   ) +
-  scale_color_manual(values = c("navy", "darkgoldenrod3")) +
-  scale_fill_manual(values = c("navy", "darkgoldenrod3"))
+  ggplot2::scale_color_manual(values = c("navy", "darkgoldenrod3")) +
+  ggplot2::scale_fill_manual(values = c("navy", "darkgoldenrod3"))
 ```
 
 #### Puncta Area Violin
 
-```{r Puncta Area Violin, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
+```{r Puncta_Area_Violin, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(GreenRed_Ratio = as.numeric(GreenRed_Ratio),
@@ -212,34 +252,34 @@ Puncta_data |>
   # dplyr::filter(GreenRed_Ratio < 25) |>
   # dplyr::filter(Puncta_Area < 2) |>
   dplyr::group_by(Genotype) |>
-  ggplot(aes(x = Puncta_Area, y = Genotype, color = Genotype, fill = Genotype)
+  ggplot2::ggplot(aes(x = Puncta_Area, y = Genotype, color = Genotype, fill = Genotype)
          ) +
-  geom_violin(draw_quantiles = c(0.25, 0.5, 0.75), alpha = 0.2) +
-  # geom_boxplot(inherit.aes = T,
+  ggplot2::geom_violin(draw_quantiles = c(0.25, 0.5, 0.75), alpha = 0.2) +
+  # ggplot2::geom_boxplot(inherit.aes = T,
   #              outlier.shape = 'triangle',
   #              outlier.alpha = 0.5, outlier.color = 'black', alpha = 0.5) +
-  geom_jitter(aes(width = 0.1, alpha = 0.5, color = Genotype)) +
-  labs(title = 'Hippocampal Neuron Puncta Area Distributions',
+  ggplot2::geom_jitter(aes(width = 0.1, alpha = 0.5, color = Genotype)) +
+  ggplo2::labs(title = 'Hippocampal Neuron Puncta Area Distributions',
        x = paste0('Neuronal Puncta Area (', '&mu;m<sup>2</sup>', ')'),
        y = 'Genotype') +
-  guides(col = 'none', alpha = 'none')+
-  theme_bw() +
-  theme(plot.title = element_text(face = 'bold', size = 13),
-        panel.grid.major.y = element_blank(),
-        axis.title.x = element_markdown(face = 'bold', size = 11),
-        axis.title.y = element_text(face = 'bold', size = 11),
-        axis.text = element_text(face = 'bold', size = 10),
-        axis.ticks = element_line(color = 'black'),
-        panel.grid.minor = element_blank(),
+  ggplot2::guides(col = 'none', alpha = 'none')+
+  ggplot2::theme_bw() +
+  ggplot2::theme(plot.title = ggplot2::element_text(face = 'bold', size = 13),
+        panel.grid.major.y = ggplot2::element_blank(),
+        axis.title.x = ggplot2::element_markdown(face = 'bold', size = 11),
+        axis.title.y = ggplot2::element_text(face = 'bold', size = 11),
+        axis.text = ggplot2::element_text(face = 'bold', size = 10),
+        axis.ticks = ggplot2::element_line(color = 'black'),
+        panel.grid.minor = ggplot2::element_blank(),
         legend.position = 'none'
   ) +
-  scale_color_manual(values = c("navy", "darkgoldenrod3")) +
-  scale_fill_manual(values = c("navy", "darkgoldenrod3"))
+  ggplot2::scale_color_manual(values = c("navy", "darkgoldenrod3")) +
+  ggplot2::scale_fill_manual(values = c("navy", "darkgoldenrod3"))
 ```
 
 #### Puncta Acidity Histogram
 
-```{r Puncta Acidity Histogram full, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
+```{r Puncta_Acidity_Histogram_full, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(GreenRed_Ratio = as.numeric(GreenRed_Ratio),
@@ -249,33 +289,33 @@ Puncta_data |>
   # dplyr::filter(GreenRed_Ratio < 25) |>
   # dplyr::filter(Puncta_Area < 2) |>
   dplyr::group_by(Genotype) |>
-  ggplot(aes(x = GreenRed_Ratio, col = Genotype, fill = Genotype, alpha = 0.5)
+  ggplot2::ggplot(aes(x = GreenRed_Ratio, col = Genotype, fill = Genotype, alpha = 0.5)
          ) +
-  geom_histogram(binwidth = 0.1) +
-  labs(title = 'Hippocampal Neuron Puncta Acidity Distributions',
+  ggplot2::geom_histogram(binwidth = 0.1) +
+  ggplo2::labs(title = 'Hippocampal Neuron Puncta Acidity Distributions',
        x = 'Neuronal Puncta Average Green:Red Fluorescence Intensity (a.u.)',
        y = 'Count\n(binwidth = 0.1)') +
-  guides(col = 'none', alpha = 'none')+
-  theme_bw() +
-  theme(plot.title = element_text(face = 'bold', size = 13),
-        axis.title.x = element_markdown(face = 'bold', size = 11),
-        axis.title.y = element_text(face = 'bold', size = 11),
-        axis.text = element_text(face = 'bold', size = 10),
-        axis.ticks = element_line(color = 'black'),
-        panel.grid.minor = element_blank(),
+  ggplot2::guides(col = 'none', alpha = 'none')+
+  ggplot2::theme_bw() +
+  ggplot2::theme(plot.title = ggplot2::element_text(face = 'bold', size = 13),
+        axis.title.x = ggplot2::element_markdown(face = 'bold', size = 11),
+        axis.title.y = ggplot2::element_text(face = 'bold', size = 11),
+        axis.text = ggplot2::element_text(face = 'bold', size = 10),
+        axis.ticks = ggplot2::element_line(color = 'black'),
+        panel.grid.minor = ggplot2::element_blank(),
         legend.position = c(0.8, 0.5),
-        legend.title = element_text(face = 'bold', size = 11),
-        legend.text = element_text(face = 'bold', size = 11)
+        legend.title = ggplot2::element_text(face = 'bold', size = 11),
+        legend.text = ggplot2::element_text(face = 'bold', size = 11)
   ) +
-  scale_color_manual(values = c("navy", "darkgoldenrod3")) +
-  scale_fill_manual(values = c("navy", "darkgoldenrod3"))
+  ggplot2::scale_color_manual(values = c("navy", "darkgoldenrod3")) +
+  ggplot2::scale_fill_manual(values = c("navy", "darkgoldenrod3"))
 ```
 
 #### Puncta Acidity Histogram (zoom)
 
 <span style="color:black;font-size: 16px">Crop to better-discern differences in the majority of the data</span>
 
-```{r Puncta Acidity Histogram cropped, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
+```{r Puncta_Acidity_Histogram_cropped, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(GreenRed_Ratio = as.numeric(GreenRed_Ratio),
@@ -285,31 +325,31 @@ Puncta_data |>
   dplyr::filter(GreenRed_Ratio < 25) |>
   dplyr::filter(Puncta_Area < 2) |>
   dplyr::group_by(Genotype) |>
-  ggplot(aes(x = GreenRed_Ratio, col = Genotype, fill = Genotype, alpha = 0.5)
+  ggplot2::ggplot(aes(x = GreenRed_Ratio, col = Genotype, fill = Genotype, alpha = 0.5)
          ) +
-  geom_histogram(binwidth = 0.1) +
-  labs(title = 'Hippocampal Neuron Puncta Acidity Distributions',
+  ggplot2::geom_histogram(binwidth = 0.1) +
+  ggplo2::labs(title = 'Hippocampal Neuron Puncta Acidity Distributions',
        x = 'Neuronal Puncta Average Green:Red Fluorescence Intensity (a.u.)',
        y = 'Count\n(binwidth = 0.1)') +
-  guides(col = 'none', alpha = 'none')+
-  theme_bw() +
-  theme(plot.title = element_text(face = 'bold', size = 13),
-        axis.title.x = element_markdown(face = 'bold', size = 11),
-        axis.title.y = element_text(face = 'bold', size = 11),
-        axis.text = element_text(face = 'bold', size = 10),
-        axis.ticks = element_line(color = 'black'),
-        panel.grid.minor = element_blank(),
+  ggplot2::guides(col = 'none', alpha = 'none')+
+  ggplot2::theme_bw() +
+  ggplot2::theme(plot.title = ggplot2::element_text(face = 'bold', size = 13),
+        axis.title.x = ggplot2::element_markdown(face = 'bold', size = 11),
+        axis.title.y = ggplot2::element_text(face = 'bold', size = 11),
+        axis.text = ggplot2::element_text(face = 'bold', size = 10),
+        axis.ticks = ggplot2::element_line(color = 'black'),
+        panel.grid.minor = ggplot2::element_blank(),
         legend.position = c(0.8, 0.5),
-        legend.title = element_text(face = 'bold', size = 11),
-        legend.text = element_text(face = 'bold', size = 11)
+        legend.title = ggplot2::element_text(face = 'bold', size = 11),
+        legend.text = ggplot2::element_text(face = 'bold', size = 11)
   ) +
-  scale_color_manual(values = c("navy", "darkgoldenrod3")) +
-  scale_fill_manual(values = c("navy", "darkgoldenrod3"))
+  ggplot2::scale_color_manual(values = c("navy", "darkgoldenrod3")) +
+  ggplot2::scale_fill_manual(values = c("navy", "darkgoldenrod3"))
 ```
 
 #### Puncta Acidity Density
 
-```{r Puncta Acidity Density full, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
+```{r Puncta_Acidity_Density_full, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(GreenRed_Ratio = as.numeric(GreenRed_Ratio),
@@ -319,32 +359,32 @@ Puncta_data |>
   # dplyr::filter(GreenRed_Ratio < 25) |>
   # dplyr::filter(Puncta_Area < 2) |>
   dplyr::group_by(Genotype) |>
-  ggplot(aes(x = GreenRed_Ratio, col = Genotype, fill = Genotype)) +
-  geom_density(alpha =  0.5) +
-  labs(title = 'Hippocampal Neuron Puncta Acidity Density Distributions',
+  ggplot2::ggplot(aes(x = GreenRed_Ratio, col = Genotype, fill = Genotype)) +
+  ggplot2::geom_density(alpha =  0.5) +
+  ggplo2::labs(title = 'Hippocampal Neuron Puncta Acidity Density Distributions',
        x = 'Neuronal Puncta Average Green:Red Fluorescence Intensity (a.u.)',
        y = 'Density') +
-  guides(col = 'none', alpha = 'none')+
-  theme_bw() +
-  theme(plot.title = element_text(face = 'bold', size = 13),
-        axis.title.x = element_markdown(face = 'bold', size = 11),
-        axis.title.y = element_text(face = 'bold', size = 11),
-        axis.text = element_text(face = 'bold', size = 10),
-        axis.ticks = element_line(color = 'black'),
-        panel.grid.minor = element_blank(),
+  ggplot2::guides(col = 'none', alpha = 'none')+
+  ggplot2::theme_bw() +
+  ggplot2::theme(plot.title = ggplot2::element_text(face = 'bold', size = 13),
+        axis.title.x = ggplot2::element_markdown(face = 'bold', size = 11),
+        axis.title.y = ggplot2::element_text(face = 'bold', size = 11),
+        axis.text = ggplot2::element_text(face = 'bold', size = 10),
+        axis.ticks = ggplot2::element_line(color = 'black'),
+        panel.grid.minor = ggplot2::element_blank(),
         legend.position = c(0.80, 0.5),
-        legend.title = element_text(face = 'bold', size = 11),
-        legend.text = element_text(face = 'bold', size = 11)
+        legend.title = ggplot2::element_text(face = 'bold', size = 11),
+        legend.text = ggplot2::element_text(face = 'bold', size = 11)
   ) +
-  scale_color_manual(values = c("navy", "darkgoldenrod3")) +
-  scale_fill_manual(values = c("navy", "darkgoldenrod3"))
+  ggplot2::scale_color_manual(values = c("navy", "darkgoldenrod3")) +
+  ggplot2::scale_fill_manual(values = c("navy", "darkgoldenrod3"))
 ```
 
 #### Puncta Acidity Density (zoom)
 
 <span style="color:black;font-size: 16px">Crop to better-discern differences in the majority of the data</span>
 
-```{r Puncta Acidity Density cropped, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
+```{r Puncta_Acidity_Density_cropped, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(GreenRed_Ratio = as.numeric(GreenRed_Ratio),
@@ -354,30 +394,30 @@ Puncta_data |>
   dplyr::filter(GreenRed_Ratio < 25) |>
   dplyr::filter(Puncta_Area < 2) |>
   dplyr::group_by(Genotype) |>
-  ggplot(aes(x = GreenRed_Ratio, col = Genotype, fill = Genotype)) +
-  geom_density(alpha =  0.5) +
-  labs(title = 'Hippocampal Neuron Puncta Acidity Density Distributions',
+  ggplot2::ggplot(aes(x = GreenRed_Ratio, col = Genotype, fill = Genotype)) +
+  ggplot2::geom_density(alpha =  0.5) +
+  ggplo2::labs(title = 'Hippocampal Neuron Puncta Acidity Density Distributions',
        x = 'Neuronal Puncta Average Green:Red Fluorescence Intensity (a.u.)',
        y = 'Density') +
-  guides(col = 'none', alpha = 'none')+
-  theme_bw() +
-  theme(plot.title = element_text(face = 'bold', size = 13),
-        axis.title.x = element_markdown(face = 'bold', size = 11),
-        axis.title.y = element_text(face = 'bold', size = 11),
-        axis.text = element_text(face = 'bold', size = 10),
-        axis.ticks = element_line(color = 'black'),
-        panel.grid.minor = element_blank(),
+  ggplot2::guides(col = 'none', alpha = 'none')+
+  ggplot2::theme_bw() +
+  ggplot2::theme(plot.title = ggplot2::element_text(face = 'bold', size = 13),
+        axis.title.x = ggplot2::element_markdown(face = 'bold', size = 11),
+        axis.title.y = ggplot2::element_text(face = 'bold', size = 11),
+        axis.text = ggplot2::element_text(face = 'bold', size = 10),
+        axis.ticks = ggplot2::element_line(color = 'black'),
+        panel.grid.minor = ggplot2::element_blank(),
         legend.position = c(0.80, 0.5),
-        legend.title = element_text(face = 'bold', size = 11),
-        legend.text = element_text(face = 'bold', size = 11)
+        legend.title = ggplot2::element_text(face = 'bold', size = 11),
+        legend.text = ggplot2::element_text(face = 'bold', size = 11)
   ) +
-  scale_color_manual(values = c("navy", "darkgoldenrod3")) +
-  scale_fill_manual(values = c("navy", "darkgoldenrod3"))
+  ggplot2::scale_color_manual(values = c("navy", "darkgoldenrod3")) +
+  ggplot2::scale_fill_manual(values = c("navy", "darkgoldenrod3"))
 ```
 
 #### Puncta Area and Acidity Contour
 
-```{r Puncta Area and Acidity 2d density full, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 5}
+```{r Puncta_Area_and_Acidity_2d_density_full, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 5}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(GreenRed_Ratio = as.numeric(GreenRed_Ratio),
@@ -389,36 +429,36 @@ Puncta_data |>
   # dplyr::filter(GreenRed_Ratio < 25) |>
   # dplyr::filter(Puncta_Area < 2) |>
   dplyr::group_by(Genotype) |>
-  ggplot(aes(x = Puncta_Area,
+  ggplot2::ggplot(aes(x = Puncta_Area,
              y = GreenRed_Ratio, col = Genotype, fill = Genotype)) +
-  geom_point(alpha = 0.1, size = 2.5) +
-  geom_density_2d(contour_var = 'density', linewidth = 1, alpha = 0.7) +
-  labs(title = 'Hippocampal Neuron Puncta Acidity and Area Distributions',
+  ggplot2::geom_point(alpha = 0.1, size = 2.5) +
+  ggplot2::geom_density_2d(contour_var = 'density', linewidth = 1, alpha = 0.7) +
+  ggplo2::labs(title = 'Hippocampal Neuron Puncta Acidity and Area Distributions',
        x = paste0('Neuronal Puncta Area (', '&mu;m<sup>2</sup>', ')'),
        #(', '&mu;m<sup>2</sup>', ')',
        y = 'Neuronal Puncta Average Green:Red Fluorescence Intensity (a.u.)',
        fill = 'Genotype') +
-  guides(fill = 'none', alpha = 'none')+
-  theme_bw() +
-  theme(plot.title = element_text(face = 'bold', size = 13),
-        axis.title.x = element_markdown(face = 'bold', size = 11),
-        axis.title.y = element_text(face = 'bold', size = 10),
-        axis.text = element_text(face = 'bold', size = 9),
-        axis.ticks = element_line(color = 'black'),
-        panel.grid.minor = element_blank(),
+  ggplot2::guides(fill = 'none', alpha = 'none')+
+  ggplot2::theme_bw() +
+  ggplot2::theme(plot.title = ggplot2::element_text(face = 'bold', size = 13),
+        axis.title.x = ggplot2::element_markdown(face = 'bold', size = 11),
+        axis.title.y = ggplot2::element_text(face = 'bold', size = 10),
+        axis.text = ggplot2::element_text(face = 'bold', size = 9),
+        axis.ticks = ggplot2::element_line(color = 'black'),
+        panel.grid.minor = ggplot2::element_blank(),
         legend.position = c(0.80, 0.6),
-        legend.title = element_text(face = 'bold', size = 9),
-        legend.text = element_text(face = 'bold', size = 9)
+        legend.title = ggplot2::element_text(face = 'bold', size = 9),
+        legend.text = ggplot2::element_text(face = 'bold', size = 9)
   ) +
-  scale_color_manual(values = c("navy", "darkgoldenrod3")) +
-  scale_fill_manual(values = c("navy", "darkgoldenrod3"))
+  ggplot2::scale_color_manual(values = c("navy", "darkgoldenrod3")) +
+  ggplot2::scale_fill_manual(values = c("navy", "darkgoldenrod3"))
 ```
 
 #### Puncta Area and Acidity Contour (zoom)
 
 <span style="color:black;font-size: 16px">Crop to better-discern differences in the majority of the data</span>
 
-```{r Puncta Area and Acidity 2d density cropped, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 5}
+```{r Puncta_Area_and_Acidity_2d_density_cropped, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 5}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(GreenRed_Ratio = as.numeric(GreenRed_Ratio),
@@ -430,33 +470,39 @@ Puncta_data |>
   dplyr::filter(GreenRed_Ratio < 25) |>
   dplyr::filter(Puncta_Area < 2) |>
   dplyr::group_by(Genotype) |>
-  ggplot(aes(x = Puncta_Area,
+  ggplot2::ggplot(aes(x = Puncta_Area,
              y = GreenRed_Ratio, col = Genotype, fill = Genotype)) +
-  geom_point(alpha = 0.1, size = 2.5) +
-  geom_density_2d(contour_var = 'density', linewidth = 1, alpha = 0.7) +
-  labs(title = 'Hippocampal Neuron Puncta Acidity and Area Distributions',
+  ggplot2::geom_point(alpha = 0.1, size = 2.5) +
+  ggplot2::geom_density_2d(contour_var = 'density', linewidth = 1, alpha = 0.7) +
+  ggplo2::labs(title = 'Hippocampal Neuron Puncta Acidity and Area Distributions',
        x = paste0('Neuronal Puncta Area (', '&mu;m<sup>2</sup>', ')'),
        #(', '&mu;m<sup>2</sup>', ')',
        y = 'Neuronal Puncta Average Green:Red Fluorescence Intensity (a.u.)',
        fill = 'Genotype') +
-  guides(fill = 'none', alpha = 'none')+
-  theme_bw() +
-  theme(plot.title = element_text(face = 'bold', size = 13),
-        axis.title.x = element_markdown(face = 'bold', size = 11),
-        axis.title.y = element_text(face = 'bold', size = 10),
-        axis.text = element_text(face = 'bold', size = 9),
-        axis.ticks = element_line(color = 'black'),
-        panel.grid.minor = element_blank(),
+  ggplot2::guides(fill = 'none', alpha = 'none')+
+  ggplot2::theme_bw() +
+  ggplot2::theme(plot.title = ggplot2::element_text(face = 'bold', size = 13),
+        axis.title.x = ggplot2::element_markdown(face = 'bold', size = 11),
+        axis.title.y = ggplot2::element_text(face = 'bold', size = 10),
+        axis.text = ggplot2::element_text(face = 'bold', size = 9),
+        axis.ticks = ggplot2::element_line(color = 'black'),
+        panel.grid.minor = ggplot2::element_blank(),
         legend.position = c(0.80, 0.6),
-        legend.title = element_text(face = 'bold', size = 9),
-        legend.text = element_text(face = 'bold', size = 9)
+        legend.title = ggplot2::element_text(face = 'bold', size = 9),
+        legend.text = ggplot2::element_text(face = 'bold', size = 9)
   ) +
-  scale_color_manual(values = c("navy", "darkgoldenrod3")) +
-  scale_fill_manual(values = c("navy", "darkgoldenrod3"))
+  ggplot2::scale_color_manual(values = c("navy", "darkgoldenrod3")) +
+  ggplot2::scale_fill_manual(values = c("navy", "darkgoldenrod3"))
 ```
 
 
-### Statistics {.tabset .tabset-pills .tabset-fade}
+### Statistics
+
+```{r, results='asis', echo=FALSE}
+if (knitr::is_html_output()) {
+  cat('### Statistics {.tabset .tabset-pills .tabset-fade}\n')
+}
+```
 
 <span style="color:black;font-size: 16px">Perform weighted linear regressions on puncta data</span>  
 
@@ -668,7 +714,7 @@ obvious and, again, not necessarily relevant</span>
 <span style="color:black;font-size: 16px">Significant. Show the residuals</span>
 
 #### Cell Body Area residuals dist
-```{r Cell Body Area lm residuals dist, include = T, message = F, warning = F, echo = T, fig.width = 6, fig.height = 4}
+```{r Cell_Body_Area_lm_residuals_dist, include = T, message = F, warning = F, echo = T, fig.width = 6, fig.height = 4}
   ## Cell Body area residuals distributions
 Puncta_data |>
   dplyr::group_by(Genotype, cell_num) |>
@@ -726,7 +772,7 @@ not the same between genotypes</span>
 <span style="color:black;font-size: 16px">What's the shape of the dv, taking both genotypes into account?</span>
 
 #### Cell Body Area density
-```{r Cell Body Area density, include = T, message = F, warning = F, echo = T}
+```{r Cell_Body_Area_density, include = T, message = F, warning = F, echo = T}
 Puncta_data |> dplyr::distinct(Cell_Body_Area) |> 
   ggplot(aes(x = as.numeric(Cell_Body_Area))) +
   geom_density(fill = 'black', alpha = 0.5) +
@@ -822,7 +868,7 @@ it here</span>
 
 #### Cell Body Area vs Avg Puncta Area scatter w/fit
 
-```{r Cell Body Area Scatter w lm fit, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
+```{r Cell_Body_Area_Scatter_w_lm_fit, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 Puncta_data |>
   as.data.frame() |>
   dplyr::mutate(
@@ -912,13 +958,19 @@ bodies)</span>
 <span style="color:black;font-size: 16px">Thus, mutant endolysosomal cell bodies may be significantly larger; however,
 there is no difference in the puncta size between the two genotypes</span>
 
-### Stats Plots {.tabset .tabset-pills .tabset-fade}
+### Stats Plots
+
+```{r, results='asis', echo=FALSE}
+if (knitr::is_html_output()) {
+  cat('### Stats Plots {.tabset .tabset-pills .tabset-fade}\n')
+}
+```
 
 <span style="color:black;font-size: 16px">Visualize the statistical test results</span>
 
 #### Puncta Acidity Bar
 
-```{r Puncta Acidity Bar, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
+```{r Puncta_Acidity_Bar, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 puncta_acidity_lm$model$Genotype |>
   as.data.frame() |>
   dplyr::slice(c(1,14)) |>
@@ -938,15 +990,15 @@ puncta_acidity_lm$model$Genotype |>
   dplyr::mutate(y_min = fitted.means - fitted.se,
                 y_max = fitted.means + fitted.se) |>
 
-ggplot(aes(
+ggplot2::ggplot(aes(
   x = Genotype,
   y = fitted.means,
   color = Genotype,
   fill = Genotype,
   alpha = 0.5))+
-  geom_bar(stat = 'identity') +
-  geom_errorbar(aes(x = Genotype, ymin = y_min, ymax = y_max), width = 0.25) +
-  geom_point(data = puncta_acidity_lm$model$Genotype |>
+  ggplot2::geom_bar(stat = 'identity') +
+  ggplot2::geom_errorbar(aes(x = Genotype, ymin = y_min, ymax = y_max), width = 0.25) +
+  ggplot2::geom_point(data = puncta_acidity_lm$model$Genotype |>
                 as.data.frame() |>
                 dplyr::rename(Genotype = `puncta_acidity_lm$model$Genotype`) |>
                 dplyr::mutate(
@@ -970,22 +1022,22 @@ ggplot(aes(
                 dplyr::mutate(mouse_n = dplyr::row_number(), .after = Genotype) |>
                 dplyr::ungroup(),
               aes(x = Genotype, y = avg_gr_ratio)) +
-  labs(title = 'Hippocampal Neuron Puncta Acidity',
+  ggplot2::labs(title = 'Hippocampal Neuron Puncta Acidity',
        x = 'Genotype',
        y = 'Weighted Cell Average Puncta Acidity (a.u.)') +
-  theme_bw() +
-  theme(title = element_text(face = 'bold', size = 13),
-        axis.title = element_text(face = 'bold', size = 11),
-        axis.text = element_text(face = 'bold', size = 11),
-        panel.grid = element_blank(),
-        legend.text = element_text(face = 'bold', size = 10)
+  ggplot2::theme_bw() +
+  ggplot2::theme(title = ggplot2::element_text(face = 'bold', size = 13),
+        axis.title = ggplot2::element_text(face = 'bold', size = 11),
+        axis.text = ggplot2::element_text(face = 'bold', size = 11),
+        panel.grid = ggplot2::element_blank(),
+        legend.text = ggplot2::element_text(face = 'bold', size = 10)
         ) +
-  guides(alpha = 'none') +
-  scale_color_manual(values = c('navy', 'darkgoldenrod3')) +
-  scale_fill_manual(values = c('navy', 'darkgoldenrod3')) +
-  geom_segment(x = 1, xend = 2, y = 2, yend = 2, color = 'black', size = 1) +
-  # geom_signif()
-  geom_text(
+  ggplot2::guides(alpha = 'none') +
+  ggplot2::scale_color_manual(values = c('navy', 'darkgoldenrod3')) +
+  ggplot2::scale_fill_manual(values = c('navy', 'darkgoldenrod3')) +
+  ggplot2::geom_segment(x = 1, xend = 2, y = 2, yend = 2, color = 'black', size = 1) +
+  # ggplot2::geom_signif()
+  ggplot2::geom_text(
     aes(label = "**",
         # paste0('p-value: ',
         #        round(pf(summary(puncta_acidity_lm)$fstatistic[1],
@@ -1003,7 +1055,7 @@ ggplot(aes(
 
 #### Puncta Area Bar
 
-```{r Puncta Area Bar, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
+```{r Puncta_Area_Bar, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 ## puncta area
 puncta_area_lm$model$Genotype |>
   as.data.frame() |>
@@ -1017,15 +1069,15 @@ puncta_area_lm$model$Genotype |>
   dplyr::mutate(y_min = fitted.means - fitted.se,
                 y_max = fitted.means + fitted.se) |>
 
-  ggplot(aes(
+  ggplot2::ggplot(aes(
     x = Genotype,
     y = fitted.means,
     color = Genotype,
     fill = Genotype,
     alpha = 0.5))+
-  geom_bar(stat = 'identity') +
-  geom_errorbar(aes(x = Genotype, ymin = y_min, ymax = y_max), width = 0.25) +
-  geom_point(data = puncta_area_lm$model$Genotype |>
+  ggplot2::geom_bar(stat = 'identity') +
+  ggplot2::geom_errorbar(aes(x = Genotype, ymin = y_min, ymax = y_max), width = 0.25) +
+  ggplot2::geom_point(data = puncta_area_lm$model$Genotype |>
                as.data.frame() |>
                dplyr::rename(Genotype = `puncta_area_lm$model$Genotype`) |>
                dplyr::mutate(
@@ -1049,23 +1101,23 @@ puncta_area_lm$model$Genotype |>
                dplyr::mutate(mouse_n = dplyr::row_number(), .after = Genotype) |>
                dplyr::ungroup(),
              aes(x = Genotype, y = avg_puncta_area)) +
-  labs(title = 'Hippocampal Neuron Puncta Area',
+  ggplot2::labs(title = 'Hippocampal Neuron Puncta Area',
        x = 'Genotype',
        y = bquote('Weighted Cell Average Puncta Area '(mu*m^2)),
        ) +
-  theme_bw() +
-  theme(title = element_text(face = 'bold', size = 13),
-        axis.title = element_text(face = 'bold', size = 11),
-        axis.text = element_text(face = 'bold', size = 11),
-        panel.grid = element_blank(),
-        legend.text = element_text(face = 'bold', size = 10)
+  ggplot2::theme_bw() +
+  ggplot2::theme(title = ggplot2::element_text(face = 'bold', size = 13),
+        axis.title = ggplot2::element_text(face = 'bold', size = 11),
+        axis.text = ggplot2::element_text(face = 'bold', size = 11),
+        panel.grid = ggplot2::element_blank(),
+        legend.text = ggplot2::element_text(face = 'bold', size = 10)
   ) +
-  guides(alpha = 'none') +
-  scale_color_manual(values = c('navy', 'darkgoldenrod3')) +
-  scale_fill_manual(values = c('navy', 'darkgoldenrod3')) +
-  geom_segment(x = 1, xend = 2, y = 0.8, yend = 0.8, color = 'black', size = 1) +
-  # geom_signif()
-  geom_text(
+  ggplot2::guides(alpha = 'none') +
+  ggplot2::scale_color_manual(values = c('navy', 'darkgoldenrod3')) +
+  ggplot2::scale_fill_manual(values = c('navy', 'darkgoldenrod3')) +
+  ggplot2::geom_segment(x = 1, xend = 2, y = 0.8, yend = 0.8, color = 'black', size = 1) +
+  # ggplot2::geom_signif()
+  ggplot2::geom_text(
     aes(label = "N.S.",
         # paste0('p-value: ',
         #        round(pf(summary(puncta_acidity_lm)$fstatistic[1],
@@ -1086,7 +1138,7 @@ puncta_area_lm$model$Genotype |>
 
 #### Puncta Number Bar
 
-```{r Puncta Number Bar, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
+```{r Puncta_Number_Bar, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 puncta_n_lm$model$Genotype |>
   as.data.frame() |>
   dplyr::slice(c(1,14)) |>
@@ -1106,15 +1158,15 @@ puncta_n_lm$model$Genotype |>
   dplyr::mutate(y_min = fitted.means - fitted.se,
                 y_max = fitted.means + fitted.se) |>
 
-  ggplot(aes(
+  ggplot2::ggplot(aes(
     x = Genotype,
     y = fitted.means,
     color = Genotype,
     fill = Genotype,
     alpha = 0.5))+
-  geom_bar(stat = 'identity') +
-  geom_errorbar(aes(x = Genotype, ymin = y_min, ymax = y_max), width = 0.25) +
-  geom_point(data = puncta_n_lm$model$Genotype |>
+  ggplot2::geom_bar(stat = 'identity') +
+  ggplot2::geom_errorbar(aes(x = Genotype, ymin = y_min, ymax = y_max), width = 0.25) +
+  ggplot2::geom_point(data = puncta_n_lm$model$Genotype |>
                as.data.frame() |>
                dplyr::rename(Genotype = `puncta_n_lm$model$Genotype`) |>
                dplyr::mutate(
@@ -1134,23 +1186,23 @@ puncta_n_lm$model$Genotype |>
                dplyr::mutate(mouse_n = dplyr::row_number(), .after = Genotype) |>
                dplyr::ungroup(),
              aes(x = Genotype, y = avg_puncta_n)) +
-  labs(title = 'Hippocampal Neuron Puncta Number',
+  ggplot2::labs(title = 'Hippocampal Neuron Puncta Number',
        x = 'Genotype',
        y = 'Weighted Cell Average Puncta Number',
   ) +
-  theme_bw() +
-  theme(title = element_text(face = 'bold', size = 13),
-        axis.title = element_text(face = 'bold', size = 11),
-        axis.text = element_text(face = 'bold', size = 11),
-        panel.grid = element_blank(),
-        legend.text = element_text(face = 'bold', size = 10)
+  ggplot2::theme_bw() +
+  ggplot2::theme(title = ggplot2::element_text(face = 'bold', size = 13),
+        axis.title = ggplot2::element_text(face = 'bold', size = 11),
+        axis.text = ggplot2::element_text(face = 'bold', size = 11),
+        panel.grid = ggplot2::element_blank(),
+        legend.text = ggplot2::element_text(face = 'bold', size = 10)
   ) +
-  guides(alpha = 'none') +
-  scale_color_manual(values = c('navy', 'darkgoldenrod3')) +
-  scale_fill_manual(values = c('navy', 'darkgoldenrod3')) +
-  geom_segment(x = 1, xend = 2, y = 30, yend = 30, color = 'black', size = 1) +
-  # geom_signif()
-  geom_text(
+  ggplot2::guides(alpha = 'none') +
+  ggplot2::scale_color_manual(values = c('navy', 'darkgoldenrod3')) +
+  ggplot2::scale_fill_manual(values = c('navy', 'darkgoldenrod3')) +
+  ggplot2::geom_segment(x = 1, xend = 2, y = 30, yend = 30, color = 'black', size = 1) +
+  # ggplot2::geom_signif()
+  ggplot2::geom_text(
     aes(label = "N.S.",
         # paste0('p-value: ',
         #        round(pf(summary(puncta_n_lm)$fstatistic[1],
@@ -1168,7 +1220,7 @@ puncta_n_lm$model$Genotype |>
 
 #### Cell Body Area Bar (Welch's t)
 
-```{r Cell Body Area Welch Bar, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
+```{r Cell_Body_Area_Welch_Bar, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 cell_area_lm$model$Genotype |>
   as.data.frame() |>
   dplyr::slice(c(1,14)) |>
@@ -1183,15 +1235,15 @@ cell_area_lm$model$Genotype |>
   dplyr::mutate(y_min = fitted.means - fitted.se,
                 y_max = fitted.means + fitted.se) |>
 
-  ggplot(aes(
+  ggplot2::ggplot2::ggplot(aes(
     x = Genotype,
     y = fitted.means,
     color = Genotype,
     fill = Genotype,
     alpha = 0.5))+
-  geom_bar(stat = 'identity') +
-  geom_errorbar(aes(x = Genotype, ymin = y_min, ymax = y_max), width = 0.25) +
-  geom_point(data = cell_area_lm$model$Genotype |>
+  ggplot2::ggplot2::geom_bar(stat = 'identity') +
+  ggplot2::ggplot2::geom_errorbar(aes(x = Genotype, ymin = y_min, ymax = y_max), width = 0.25) +
+  ggplot2::ggplot2::geom_point(data = cell_area_lm$model$Genotype |>
                as.data.frame() |>
                dplyr::rename(Genotype = `cell_area_lm$model$Genotype`) |>
                dplyr::mutate(
@@ -1213,22 +1265,22 @@ cell_area_lm$model$Genotype |>
                dplyr::mutate(mouse_n = dplyr::row_number(), .after = Genotype) |>
                dplyr::ungroup(),
              aes(x = Genotype, y = avg_cell_body_area)) +
-  labs(title = "Hippocampal Neuron Cell Body Area (Welch's t)",
+  ggplot2::ggplot2::labs(title = "Hippocampal Neuron Cell Body Area (Welch's t)",
        x = 'Genotype',
        y = bquote('Cell Body Area '(mu*m^2))) +
-  theme_bw() +
-  theme(title = element_text(face = 'bold', size = 13),
-        axis.title = element_text(face = 'bold', size = 11),
-        axis.text = element_text(face = 'bold', size = 11),
-        panel.grid = element_blank(),
-        legend.text = element_text(face = 'bold', size = 10)
+  ggplot2::ggplot2::theme_bw() +
+  ggplot2::ggplot2::theme(title = ggplot2::ggplot2::element_text(face = 'bold', size = 13),
+        axis.title = ggplot2::ggplot2::element_text(face = 'bold', size = 11),
+        axis.text = ggplot2::ggplot2::element_text(face = 'bold', size = 11),
+        panel.grid = ggplot2::ggplot2::element_blank(),
+        legend.text = ggplot2::ggplot2::element_text(face = 'bold', size = 10)
   ) +
-  guides(alpha = 'none') +
-  scale_color_manual(values = c('navy', 'darkgoldenrod3')) +
-  scale_fill_manual(values = c('navy', 'darkgoldenrod3')) +
-  geom_segment(x = 1, xend = 2, y = 400, yend = 400, color = 'black', size = 1) +
-  # geom_signif()
-  geom_text(
+  ggplot2::ggplot2::guides(alpha = 'none') +
+  ggplot2::ggplot2::scale_color_manual(values = c('navy', 'darkgoldenrod3')) +
+  ggplot2::ggplot2::scale_fill_manual(values = c('navy', 'darkgoldenrod3')) +
+  ggplot2::ggplot2::geom_segment(x = 1, xend = 2, y = 400, yend = 400, color = 'black', size = 1) +
+  # ggplot2::geom_signif()
+  ggplot2::ggplot2::geom_text(
     aes(label = "*",
         # paste0('p-value: ',
         #        round(pf(summary(puncta_acidity_lm)$fstatistic[1],
@@ -1249,7 +1301,7 @@ cell_area_lm$model$Genotype |>
 
 #### Cell Body Area Bar (glm)
 
-```{r Cell Body Area Gamma Bar, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
+```{r Cell_Body_Area_Gamma_Bar, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 cell_area_glm$model$Genotype |>
   as.data.frame() |>
   dplyr::slice(c(1,14)) |>
@@ -1274,17 +1326,17 @@ cell_area_glm$model$Genotype |>
   dplyr::mutate(y_min = fitted.means - fitted.se,
                 y_max = fitted.means + fitted.se) |>
 
-  ggplot(aes(
+  ggplot2::ggplot2::ggplot(aes(
     x = Genotype,
     y = fitted.means,
     color = Genotype,
     fill = Genotype,
     alpha = 0.5))+
-  geom_bar(stat = 'identity') +
-  geom_errorbar(aes(x = Genotype,
+  ggplot2::ggplot2::geom_bar(stat = 'identity') +
+  ggplot2::ggplot2::geom_errorbar(aes(x = Genotype,
                     ymin = y_min,
                     ymax = y_max), width = 0.25, inherit.aes = T) +
-  geom_point(data = cell_area_glm$model$Genotype |>
+  ggplot2::ggplot2::geom_point(data = cell_area_glm$model$Genotype |>
                as.data.frame() |>
                dplyr::rename(Genotype = `cell_area_glm$model$Genotype`) |>
                dplyr::mutate(
@@ -1306,22 +1358,22 @@ cell_area_glm$model$Genotype |>
                dplyr::mutate(mouse_n = dplyr::row_number(), .after = Genotype) |>
                dplyr::ungroup(),
              aes(x = Genotype, y = avg_cell_body_area)) +
-  labs(title = 'Hippocampal Neuron Cell Body Area (glm-Gamma)',
+  ggplot2::ggplot2::labs(title = 'Hippocampal Neuron Cell Body Area (glm-Gamma)',
        x = 'Genotype',
        y = bquote('Cell Body Area '(mu*m^2))) +
-  theme_bw() +
-  theme(title = element_text(face = 'bold', size = 12.5),
-        axis.title = element_text(face = 'bold', size = 11),
-        axis.text = element_text(face = 'bold', size = 11),
-        panel.grid = element_blank(),
-        legend.text = element_text(face = 'bold', size = 10)
+  ggplot2::ggplot2::theme_bw() +
+  ggplot2::ggplot2::theme(title = ggplot2::ggplot2::element_text(face = 'bold', size = 12.5),
+        axis.title = ggplot2::ggplot2::element_text(face = 'bold', size = 11),
+        axis.text = ggplot2::ggplot2::element_text(face = 'bold', size = 11),
+        panel.grid = ggplot2::ggplot2::element_blank(),
+        legend.text = ggplot2::ggplot2::element_text(face = 'bold', size = 10)
   ) +
-  guides(alpha = 'none') +
-  scale_color_manual(values = c('navy', 'darkgoldenrod3')) +
-  scale_fill_manual(values = c('navy', 'darkgoldenrod3')) +
-  geom_segment(x = 1, xend = 2, y = 385, yend = 385, color = 'black', size = 1) +
-  # geom_signif()
-  geom_text(
+  ggplot2::ggplot2::guides(alpha = 'none') +
+  ggplot2::ggplot2::scale_color_manual(values = c('navy', 'darkgoldenrod3')) +
+  ggplot2::ggplot2::scale_fill_manual(values = c('navy', 'darkgoldenrod3')) +
+  ggplot2::ggplot2::geom_segment(x = 1, xend = 2, y = 385, yend = 385, color = 'black', size = 1) +
+  # ggplot2::geom_signif()
+  ggplot2::ggplot2::geom_text(
     aes(label = "N.S.",
         # paste0('p-value: ',
         #        round(pf(summary(puncta_acidity_lm)$fstatistic[1],
@@ -1337,7 +1389,13 @@ cell_area_glm$model$Genotype |>
     y = 412)
 ```
 
-### Results Tables {.tabset .tabset-pills .tabset-fade}
+### Results Tables
+
+```{r, results='asis', echo=FALSE}
+if (knitr::is_html_output()) {
+  cat('### Results Tables {.tabset .tabset-pills .tabset-fade}\n')
+}
+```
 
 #### Tidied Puncta Data
 
