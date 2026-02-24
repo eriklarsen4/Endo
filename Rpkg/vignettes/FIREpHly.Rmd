@@ -30,11 +30,11 @@ knitr::opts_chunk$set(
 )
 ```
 
-### Overview
+## Overview
 
 ```{r, results='asis', echo=FALSE}
 if (knitr::is_html_output()) {
-  cat('### Overview {.tabset .tabset-pills .tabset-fade}\n')
+  cat('## Overview {.tabset .tabset-pills .tabset-fade}\n')
 }
 ```
 
@@ -45,15 +45,15 @@ the endolysosomal paper under revision (2025-02-10).
 Until an image is built, the `R version` used was **R 4.3.2** with the
 packages installed below
 
-### Set up Environment
+## Set up Environment
 
 ```{r, results='asis', echo=FALSE}
 if (knitr::is_html_output()) {
-  cat('### Set up Environment {.tabset .tabset-pills .tabset-fade}\n')
+  cat('## Set up Environment {.tabset .tabset-pills .tabset-fade}\n')
 }
 ```
 
-#### Attach packages
+### Attach packages
 
 ```{r Attach packages, include = T, message = F, warning = F, echo = T}
 packages <- c(#'TMEM',
@@ -74,11 +74,11 @@ for ( package in packages ) {
 }
 ```
 
-### Import FIRE-pHly Data
+## Import FIRE-pHly Data
 
 ```{r, results='asis', echo=FALSE}
 if (knitr::is_html_output()) {
-  cat('### Import FIRE-pHly Data {.tabset .tabset-pills .tabset-fade}\n')
+  cat('## Import FIRE-pHly Data {.tabset .tabset-pills .tabset-fade}\n')
 }
 ```
 
@@ -98,13 +98,13 @@ included in the [R Markdown vignette](https://github.com/eriklarsen4/Endo/blob/d
 
 ```{r, results='asis', echo=FALSE}
 if (knitr::is_html_output()) {
-  cat('### Visualize {.tabset .tabset-pills .tabset-fade}\n')
+  cat('## Visualize {.tabset .tabset-pills .tabset-fade}\n')
 }
 ```
 
 <span style="color:black;font-size: 16px">Investigate the distributions of measured variables</span>
 
-#### Puncta Area Histogram
+### Puncta Area Histogram
 
 ```{r Puncta_Area_Histogram_full, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 Puncta_data |>
@@ -496,11 +496,11 @@ Puncta_data |>
 ```
 
 
-### Statistics
+## Statistics
 
 ```{r, results='asis', echo=FALSE}
 if (knitr::is_html_output()) {
-  cat('### Statistics {.tabset .tabset-pills .tabset-fade}\n')
+  cat('## Statistics {.tabset .tabset-pills .tabset-fade}\n')
 }
 ```
 
@@ -512,7 +512,7 @@ if (knitr::is_html_output()) {
 * <span style="color:black;font-size: 16px">inter-mouse variability</span>  
 * <span style="color:black;font-size: 16px">(genotypic) inter-puncta variability</span>
 
-#### Puncta Acidity
+### Puncta Acidity
 
 ```{r Puncta Acidity wlm, include = T, message = F, warning = F, echo = F}
 Puncta_avg_acidity <- Puncta_data |>
@@ -556,7 +556,7 @@ shapiro.test(summary(puncta_acidity_lm)$residuals |> as.numeric())
 ```
 <span style="color:black;font-size: 18px">Not non-normal</span>
 
-#### Puncta Area
+### Puncta Area
 ```{r Puncta Area wlm, include = T, message = F, warning = F, echo = F}
 Puncta_avg_area <- Puncta_data |>
   dplyr::mutate(genotype_puncta_n = NA_real_, .after = Puncta_ID) |>
@@ -600,7 +600,7 @@ shapiro.test(summary(puncta_area_lm)$residuals |> as.numeric())
 
 <span style="color:black;font-size: 18px">Not non-normal</span>
 
-#### Puncta Number (wlm)
+### Puncta Number (wlm)
 ```{r Puncta Number wlm, include = T, message = F, warning = F, echo = F}
 Puncta_n <- Puncta_data |>
   dplyr::mutate(genotype_puncta_n = NA_real_, .after = Puncta_ID) |>
@@ -623,7 +623,7 @@ summary(puncta_n_lm)
 
 <span style="color:black;font-size: 18px">No significant difference between genotypes</span>
 
-#### Puncta Number (Welch's t)
+### Puncta Number (Welch's t)
 ```{r Puncta number Welchs t, include = T, message = F, warning = F, echo = T}
 ## more traditional Welch's t
 t.test(
@@ -661,7 +661,7 @@ shapiro.test(summary(puncta_n_lm)$residuals |> as.numeric())
 
 <span style="color:black;font-size: 18px">Not non-normal</span>
 
-#### Cell Body Area
+### Cell Body Area
 ```{r Cell Body Area lm, include = T, message = F, warning = F, echo = T}
   ## Welch's t test
 t.test(x = c(Puncta_data |>
@@ -713,7 +713,7 @@ obvious and, again, not necessarily relevant</span>
 
 <span style="color:black;font-size: 16px">Significant. Show the residuals</span>
 
-#### Cell Body Area residuals dist
+### Cell Body Area residuals dist
 ```{r Cell_Body_Area_lm_residuals_dist, include = T, message = F, warning = F, echo = T, fig.width = 6, fig.height = 4}
   ## Cell Body area residuals distributions
 Puncta_data |>
@@ -771,7 +771,7 @@ not the same between genotypes</span>
 
 <span style="color:black;font-size: 16px">What's the shape of the dv, taking both genotypes into account?</span>
 
-#### Cell Body Area density
+### Cell Body Area density
 ```{r Cell_Body_Area_density, include = T, message = F, warning = F, echo = T}
 Puncta_data |> dplyr::distinct(Cell_Body_Area) |> 
   ggplot(aes(x = as.numeric(Cell_Body_Area))) +
@@ -866,7 +866,7 @@ it here</span>
 <span style="color:black;font-size: 16px">Is there a relationship between cell body size and puncta size?</span>
 <span style="color:black;font-size: 16px">Do the genotypes differ? (see below)</span>
 
-#### Cell Body Area vs Avg Puncta Area scatter w/fit
+### Cell Body Area vs Avg Puncta Area scatter w/fit
 
 ```{r Cell_Body_Area_Scatter_w_lm_fit, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 Puncta_data |>
@@ -932,7 +932,7 @@ Puncta_data |>
     method = 'lm', se = F)
 ```
 
-#### Cell Body Area vs Avg Puncta Area summary
+### Cell Body Area vs Avg Puncta Area summary
 
 ```{r Cell Body and Genotype Do Not Predict Avg Puncta Area, include = T, message = F, warning = F, echo = T}
 summary(lm(data = Puncta_data |>
@@ -958,17 +958,17 @@ bodies)</span>
 <span style="color:black;font-size: 16px">Thus, mutant endolysosomal cell bodies may be significantly larger; however,
 there is no difference in the puncta size between the two genotypes</span>
 
-### Stats Plots
+## Stats Plots
 
 ```{r, results='asis', echo=FALSE}
 if (knitr::is_html_output()) {
-  cat('### Stats Plots {.tabset .tabset-pills .tabset-fade}\n')
+  cat('## Stats Plots {.tabset .tabset-pills .tabset-fade}\n')
 }
 ```
 
 <span style="color:black;font-size: 16px">Visualize the statistical test results</span>
 
-#### Puncta Acidity Bar
+### Puncta Acidity Bar
 
 ```{r Puncta_Acidity_Bar, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 puncta_acidity_lm$model$Genotype |>
@@ -1053,7 +1053,7 @@ ggplot2::ggplot(aes(
     y = 2.1)
 ```
 
-#### Puncta Area Bar
+### Puncta Area Bar
 
 ```{r Puncta_Area_Bar, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 ## puncta area
@@ -1136,7 +1136,7 @@ puncta_area_lm$model$Genotype |>
   y = 0.85)
 ```
 
-#### Puncta Number Bar
+### Puncta Number Bar
 
 ```{r Puncta_Number_Bar, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 puncta_n_lm$model$Genotype |>
@@ -1218,7 +1218,7 @@ puncta_n_lm$model$Genotype |>
   y = 32)
 ```
 
-#### Cell Body Area Bar (Welch's t)
+### Cell Body Area Bar (Welch's t)
 
 ```{r Cell_Body_Area_Welch_Bar, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 cell_area_lm$model$Genotype |>
@@ -1299,7 +1299,7 @@ cell_area_lm$model$Genotype |>
     y = 410)
 ```
 
-#### Cell Body Area Bar (glm)
+### Cell Body Area Bar (glm)
 
 ```{r Cell_Body_Area_Gamma_Bar, include = T, message = F, warning = F, echo = F, fig.width = 6, fig.height = 4}
 cell_area_glm$model$Genotype |>
@@ -1389,15 +1389,15 @@ cell_area_glm$model$Genotype |>
     y = 412)
 ```
 
-### Results Tables
+## Results Tables
 
 ```{r, results='asis', echo=FALSE}
 if (knitr::is_html_output()) {
-  cat('### Results Tables {.tabset .tabset-pills .tabset-fade}\n')
+  cat('## Results Tables {.tabset .tabset-pills .tabset-fade}\n')
 }
 ```
 
-#### Tidied Puncta Data
+### Tidied Puncta Data
 
 ```{r Puncta Data, include = T, message = F, warning = F, echo = F}
 Puncta_data %>%
@@ -1456,7 +1456,7 @@ lm_results <- puncta_acidity_lm_results |>
   dplyr::relocate(target_var, .before = 1)
 ```
 
-#### Table of Stats
+### Table of Stats
 
 ```{r Model results table, include = T, message = F, warning = F, echo = F}
 lm_results %>%
@@ -1465,7 +1465,7 @@ lm_results %>%
   head()
 ```
 
-#### Table of Predicted Values
+### Table of Predicted Values
 
 ```{r Gather predictions weights and residuals, eval = T, include = F, message = F, warning=F, echo = T}
 lm_results_preds_and_resids <- puncta_acidity_lm |> 
@@ -1503,7 +1503,7 @@ lm_results_preds_and_resids %>%
   head()
 ```
 
-#### Shapiro Results Table
+### Shapiro Results Table
 
 ```{r Gather shapiro results, eval = T, include = F, message = F, warning = F, echo = T}
 shapiro_test_results <- shapiro_puncta_acidity |>

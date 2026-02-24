@@ -3,5 +3,5 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^\.github$
-^entrypoint.sh
-^proteomics.py
+*entrypoint.sh
+*proteomics.py
