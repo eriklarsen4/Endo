@@ -1,13 +1,21 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Feb 28 08:07:02 2026
+
+@author: Erik
+"""
+
 # SAINT: Significance Analysis of INTeractome, Revisited
 
 This repository contains a fully reproducible Python implementation of both **classical SAINT** and a **hierarchical EM-based SAINT model** for analyzing IP–MS interactome data. The package provides:
 
 - A clean, modular pipeline for classical SAINT  
-- A hierarchical mixture model solved via EM (not MCMC)  
+- A hierarchical three-component mixture model solved via deterministic EM  
 - Automatic wide→long data handling  
+- Structured shrinkage via empirical Bayes  
 - Deterministic gamma3-based scoring  
 - Publication-quality diagnostics (volcano plots, density plots, staggered heatmaps)  
-- A complete JupyterLab-friendly notebook workflow using # %% cell markers  
+- A JupyterLab-friendly workflow using `# %%` cell markers  
 
 ---
 
@@ -28,12 +36,14 @@ This repository contains a fully reproducible Python implementation of both **cl
 
 ## 1. Overview
 
-SAINT (Significance Analysis of Interactome Networks) is a probabilistic framework for identifying true protein–protein interactions from IP–MS data. This repository provides:
+SAINT (Significance Analysis of INTeractome) is a probabilistic framework for identifying true protein–protein interactions from IP–MS data. This repository implements:
 
-- **Classical SAINT**: A two-component mixture model with EM updates.  
-- **Hierarchical SAINT**: A structured, multi-level mixture model with hierarchical priors on mixture weights and component means, solved via EM.
+- **Classical SAINT** — a two-component Poisson mixture model with EM updates  
+- **Hierarchical SAINT** — a structured three-component mixture model with hierarchical priors on mixture weights and component means, solved via EM  
 
-The hierarchical model is **deterministic**, **not MCMC**, and provides more stable gamma3 estimates through structured shrinkage.
+The hierarchical model is **deterministic**.  
+There is **no MCMC**, **no sampling**, and **no posterior chains**.  
+All updates are closed-form and stable across runs.
 
 ---
 
@@ -41,18 +51,18 @@ The hierarchical model is **deterministic**, **not MCMC**, and provides more sta
 
 Clone the repository:
 
-```
-git clone https://github.com/<eriklarsen4>/<Endo>.git
-cd <Endo>
+```bash
+git clone https://github.com/eriklarsen4/Endo.git
+cd Endo
 ```
 
 Install dependencies:
 
-```
+```bash
 pip install -r requirements.txt
 ```
 
-The package is pure Python and requires no compiled extensions.
+Pure Python. No compiled extensions.
 
 ---
 
@@ -60,27 +70,27 @@ The package is pure Python and requires no compiled extensions.
 
 The pipeline accepts **wide-format** IP–MS data with:
 
-- A `Protein` column containing gene names  
-- A `MW` (molecular weight) column  
-- Replicate columns for each bait, e.g.:
+- `Protein` column  
+- `MW` (molecular weight) column  
+- replicate columns for each bait, e.g.:
 
-```
-Control_BirAV5_1  
-Control_BirAV5_2  
-Control_GFPmyc_1  
-Control_GFPmyc_2  
-Treat_TMEMV5_1  
-Treat_TMEMV5_2  
-Treat_TMEMmyc_1  
-Treat_TMEMmyc_2  
+```text
+Control_BirAV5_1
+Control_BirAV5_2
+Control_GFPmyc_1
+Control_GFPmyc_2
+Treat_TMEMV5_1
+Treat_TMEMV5_2
+Treat_TMEMmyc_1
+Treat_TMEMmyc_2
 ```
 
 ### Automatic wide→long conversion  
-The pipeline automatically reshapes wide-format data into long-format per-bait matrices.
+The pipeline automatically reshapes wide-format data into per-bait replicate matrices.
 
-### Biological mapping rule  
-Bait→protein mappings are **explicitly defined by the user** and treated as **gospel** by the pipeline.  
-No inference or guessing is performed.
+### Explicit bait mapping  
+Users provide the bait→protein mapping.  
+The pipeline **never infers** or guesses bait identity.
 
 ---
 
@@ -112,10 +122,10 @@ results = run_hierarchical_pipeline(
 )
 ```
 
-Both pipelines return a tidy results DataFrame with:
+Both pipelines return a tidy DataFrame containing:
 
 - gamma3 values  
-- lambda parameters  
+- λ₁/λ₂/λ₃ estimates  
 - mixture weights  
 - replicate summaries  
 - FDR estimates  
@@ -126,45 +136,73 @@ Both pipelines return a tidy results DataFrame with:
 
 ### Developer-Level Explanation
 
-The hierarchical SAINT model is a **three-component mixture model** with:
+The hierarchical SAINT model is a **three-component Poisson mixture** with:
 
-- Latent class assignments \( z_{i,b} \)  
-- Component means \( \lambda_1, \lambda_2, \lambda_3 \)  
-- Hierarchical priors on mixture weights \( \pi \)  
-- Hierarchical priors on component means  
-- Deterministic EM updates  
+- latent class assignments  
+- component means λ₁, λ₂, λ₃  
+- Dirichlet prior on mixture weights π  
+- Gamma(aₖ, bₖ) priors on component means  
+- empirical Bayes updates for all hyperparameters  
+- deterministic EM updates  
 
-The algorithm alternates:
+Component semantics:
 
-1. **E-step**: Compute responsibilities \( \gamma_{i,b,k} \)  
-2. **M-step**: Update \( \lambda_k \), \( \pi_k \), and hyperparameters  
-3. Repeat until convergence  
+- **λ₁** — background  
+- **λ₂** — contaminant / weak binder  
+- **λ₃** — true signal  
 
-This is **not** MCMC.  
-There are **no posterior draws**, **no chains**, and **no sampling**.
+The EM algorithm alternates:
+
+1. **E-step**  
+   Compute responsibilities γ using stabilized log-sum-exp.
+
+2. **Empirical Bayes updates**  
+   - Dirichlet parameters updated by moment matching on γ  
+   - Gamma(aₖ, bₖ) hyperparameters updated by moment matching on λₖ  
+     - mean = a / b  
+     - variance = a / b²  
+
+3. **M-step**  
+   Closed-form updates for λ₁, λ₂, λ₃ and π (method of moments).
+
+This is a **deterministic hierarchical EM**, not a Bayesian sampler.
 
 ### Layperson Explanation
 
-The hierarchical model groups proteins into three categories:
+The hierarchical model groups proteins into:
 
 1. Background  
 2. Weak binders  
 3. True interactors  
 
-It learns these categories by comparing replicate abundances across baits, borrowing strength across proteins to stabilize estimates.  
+It learns these groups by comparing replicate counts across proteins and baits, borrowing strength across proteins to stabilize estimates.  
 The gamma3 score is the probability that a protein belongs to the “true interactor” group.
 
 ---
 
-## 6. Repository Structure
+## 6. Notebook Workflow
 
-```
+All pipeline modules use `# %%` cell markers for:
+
+- clean JupyterLab execution  
+- stepwise debugging  
+- reproducible workflows  
+
+---
+
+## 7. Repository Structure
+
+```text
 Endo/
 │
 ├── saint/
 │   ├── pipeline/
 │   │   ├── classical_saint.py
 │   │   ├── hierarchical_saint.py
+│   │   └── ...
+│   ├── model/
+│   │   ├── classical_em_wrapper.py
+│   │   ├── hierarchical_em_wrapper.py
 │   │   └── ...
 │   ├── diagnostics/
 │   ├── utils/
@@ -182,49 +220,50 @@ Endo/
 
 ---
 
-## 7. Interpretation Guide
+## 8. Interpretation Guide
 
 ### gamma3  
-Responsibility for the high-abundance component.
+Responsibility for the **signal** component (λ₃).
 
 ### FDR  
 Computed deterministically from sorted gamma3 values.
 
 ### Volcano Plot  
-- x-axis: inverted signal-to-noise ratio  
+- x-axis: inverted signal-to-noise  
 - y-axis: gamma3  
-- Highlighted proteins: top interactors + TMEM184B  
+- highlights: top interactors + TMEM184B  
 
 ### Staggered Heatmap  
-Shows raw replicate counts for:
+Shows replicate-level counts for:
 
 - TMEM184B  
-- Top 25 interactors  
-- Bottom 10 interactors  
+- top 25 interactors  
+- bottom 10 interactors  
 
 ---
 
-## 8. Glossary
+## 9. Glossary
 
-**gamma3** — Responsibility for the high-intensity component.  
-**lambda1/2/3** — Component means.  
-**pi** — Mixture weights.  
-**E-step** — Computes expected latent assignments.  
-**M-step** — Updates parameters.  
-**Hierarchical prior** — Shrinkage structure across proteins.  
-**Wide→long** — Automatic data reshaping.  
+- **gamma3** — probability of belonging to the signal component  
+- **λ₁/λ₂/λ₃** — background, contaminant, signal rates  
+- **π** — mixture weights  
+- **E-step** — expected latent assignments  
+- **M-step** — parameter updates  
+- **hierarchical prior** — shrinkage across proteins  
+- **moment matching** — closed-form update for Gamma priors  
+- **wide→long** — automatic data reshaping  
 
 ---
 
-## 9. Appendix: Model Structure Summary
+## 10. Appendix: Model Structure Summary
 
 The hierarchical SAINT model is:
 
-- A structured mixture model  
-- Solved via EM  
-- Deterministic  
-- Stable across runs  
-- More expressive than classical SAINT  
-- Not a Bayesian sampler  
+- a structured three-component mixture  
+- solved via deterministic EM  
+- equipped with empirical Bayes shrinkage  
+- stable across runs  
+- more expressive than classical SAINT  
+- not a Bayesian sampler  
 
-It provides a principled gamma3 score that integrates replicate structure, bait structure, and hierarchical shrinkage.
+It produces a principled gamma3 score that integrates replicate structure, bait structure, and hierarchical shrinkage.
