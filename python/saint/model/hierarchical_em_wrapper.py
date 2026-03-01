@@ -23,14 +23,14 @@ def run_em_hierarchical(
     verbose=False
 ):
     """
-    Hierarchical EM algorithm for a single bait under a three‑component mixture
-    model with empirical Bayes updates for the priors.
+    Hierarchical EM algorithm for a single bait under a three‑component Poisson
+    mixture model with empirical Bayes updates for the prior hyperparameters.
 
     Model structure
-    ---------------
-    For a given bait, we observe an n × r matrix X of spectral counts:
+    
+    For a given bait, X is an n × r matrix of spectral counts:
       - n: number of prey proteins
-      - r: number of technical/biological replicates
+      - r: number of technical or biological replicates
 
     Each prey belongs to one of three latent components:
 
@@ -41,29 +41,36 @@ def run_em_hierarchical(
       • Component 2 (index 1): contaminant / high‑background
         - Poisson rate: lambda2
         - Represents proteins with elevated counts not attributable to specific
-          interaction (sticky binders, common contaminants).
+          interaction (e.g., sticky binders, common contaminants).
 
       • Component 3 (index 2): true signal / interactor
         - Poisson rate: lambda3
         - Represents proteins enriched due to true biological interaction.
 
-    Priors:
-      - Mixture weights pi ~ Dirichlet(alpha)
-      - Each lambda_k ~ Gamma(a_k, b_k)
-      - Hyperparameters (alpha, a_k, b_k) updated via empirical Bayes.
+    Priors
+    
+    - Mixture weights pi ~ Dirichlet(alpha)
+    - Each lambda_k ~ Gamma(a_k, b_k)
+    - Hyperparameters (alpha, a_k, b_k) are updated using an empirical Bayes
+      procedure that solves for the Gamma(a, b) distribution whose mean (a/b)
+      and variance (a/b^2) equal the empirical mean and variance of the current
+      lambda estimates.
 
     EM algorithm
-    ------------
+    
     E‑step:
         Compute gamma[i, k], the posterior probability that prey i belongs to
-        component k, using X_sum = row sums of X.
+        component k, using the posterior log‑likelihood for each component and
+        a per‑prey normalizing constant.
 
     M‑step:
-        Update lambda1, lambda2, lambda3, and pi by maximizing the expected
-        complete‑data log‑likelihood under the hierarchical model.
+        Update lambda1, lambda2, lambda3, and pi by maximizing the expected 
+        posterior objective: a weighted combination of the Poisson likelihood 
+        terms (weighted by γ) and the contributions from the Dirichlet prior on 
+        π and the Gamma (hierarchical) priors on the λ parameters.
 
     Returns
-    -------
+    
     A dictionary containing:
         loglik_history
         lambda1_history, lambda2_history, lambda3_history
@@ -73,6 +80,15 @@ def run_em_hierarchical(
         alpha_history
         a_history, b_history
         lambda1, lambda2, lambda3, tau, pi, gamma
+        
+    Hyperparameters
+    
+    The function accepts a hyperparameter dictionary. Users may supply values
+    but are not required to. Any missing entries are filled with internal
+    defaults, including the lambda initializations and the alpha parameters.
+    The tau entry may be supplied directly or overridden by the tau grid
+    search. All other hyperparameters remain unchanged unless explicitly
+    provided
     """
 
     # %% Initialization and set-up
@@ -81,13 +97,13 @@ def run_em_hierarchical(
     # Dimensions
     n, r = X.shape
 
-    # ORIGINAL INITIALIZATIONS (preserved exactly)
+    # Prey-dimensional lambda initializations for each component
     lambda1 = X.mean(axis=1).astype(float).copy()
     lambda2 = np.full(n, 0.5, dtype=float)
     lambda3 = np.full(n, 0.1, dtype=float)
 
-    # tau placeholder
-    tau = np.ones(n)
+    # Global shrinkage strength for Gamma priors (defaults to 1.0)
+    tau = float(hyperparams.get("tau", 1.0))
 
     # Mixing proportions
     pi = hyperparams["pi_init"].astype(float).copy()
@@ -97,7 +113,7 @@ def run_em_hierarchical(
     lambda1_history = []
     lambda2_history = []
     lambda3_history = []
-    tau_history = []
+    tau_history = []      # kept for API stability (stores scalar tau)
     pi_history = []
     gamma_history = []
 
@@ -113,7 +129,9 @@ def run_em_hierarchical(
     # Dirichlet prior for pi
     alpha = np.ones(3, dtype=float) * 2.0
 
-    # Gamma moment-matching helper
+    # Empirical Bayes hyperparameter update:
+    # Solve the two-equation system for Gamma(a, b) whose mean (a/b)
+    # and variance (a/b^2) equal the empirical mean and variance of lambda.
     def gamma_moments_from_lambda(lam):
         m = float(np.mean(lam))
         v = float(np.var(lam))
@@ -129,78 +147,125 @@ def run_em_hierarchical(
     a2, b2 = gamma_moments_from_lambda(lambda2)
     a3, b3 = gamma_moments_from_lambda(lambda3)
 
-    # %% EM iterations
+        # %% EM iterations
     for it in range(max_iter):
 
         # %% E-step
+
+        # Component-wise log lambda
         log_lambda1 = np.log(lambda1 + eps)
         log_lambda2 = np.log(lambda2 + eps)
         log_lambda3 = np.log(lambda3 + eps)
 
+        # Component-wise log-likelihood contributions: log p(X_i | lambda_k)
         loglik1 = X_sum * log_lambda1 - r * lambda1
         loglik2 = X_sum * log_lambda2 - r * lambda2
         loglik3 = X_sum * log_lambda3 - r * lambda3
 
+        # Log mixture weights
         log_pi = np.log(pi + eps)
 
+        # Posterior log-likelihood for each component:
+        # log π_k + log p(X_i | λ_k)
         log_post1 = log_pi[0] + loglik1
         log_post2 = log_pi[1] + loglik2
         log_post3 = log_pi[2] + loglik3
 
-        log_posts = np.vstack([log_post1, log_post2, log_post3]).T
+        # Shape (n, 3): posterior log-likelihoods for all components
+        posterior_loglik = np.vstack([log_post1, log_post2, log_post3]).T
 
-        max_log = np.max(log_posts, axis=1, keepdims=True)
-        stabilized = log_posts - max_log
-        exp_posts = np.exp(stabilized)
-        denom = exp_posts.sum(axis=1, keepdims=True)
+        # Stabilize before exponentiating
+        max_log = np.max(posterior_loglik, axis=1, keepdims=True)
+        stabilized_log_posterior = posterior_loglik - max_log
 
-        gamma = exp_posts / denom
+        # Convert posterior log-likelihood to posterior weights
+        posterior_weights = np.exp(stabilized_log_posterior)
+
+        # Normalizing constant so that gamma[i, :].sum() == 1
+        normalizing_constant = posterior_weights.sum(axis=1, keepdims=True)
+
+        # Normalized posterior probabilities (responsibilities)
+        gamma = posterior_weights / normalizing_constant
 
         gamma1 = gamma[:, 0]
         gamma2 = gamma[:, 1]
         gamma3 = gamma[:, 2]
 
-        loglik = float(np.sum(max_log[:, 0] + np.log(denom[:, 0] + eps)))
-
+        # Log-likelihood for this iteration
+        loglik = float(np.sum(max_log[:, 0] + np.log(normalizing_constant[:, 0] + eps)))
+        
         # %% Empirical Bayes updates
+
+        # Update Dirichlet prior on mixture weights using empirical mean/variance of gamma
         m = gamma.mean(axis=0)
         v = gamma.var(axis=0) + eps
         alpha0 = (m * (1.0 - m) / v - 1.0).clip(min=1.0)
         alpha = np.maximum(m * alpha0, 1.0)
-
+    
+        # Update Gamma(a, b) hyperparameters for each component
         a1, b1 = gamma_moments_from_lambda(lambda1)
         a2, b2 = gamma_moments_from_lambda(lambda2)
         a3, b3 = gamma_moments_from_lambda(lambda3)
-
+    
         # %% M-step
-        num1 = gamma1 * X_sum + (a1 - 1.0)
-        num2 = gamma2 * X_sum + (a2 - 1.0)
-        num3 = gamma3 * X_sum + (a3 - 1.0)
-
-        den1 = gamma1 * r + b1 + eps
-        den2 = gamma2 * r + b2 + eps
-        den3 = gamma3 * r + b3 + eps
-
-        lambda1_new = np.clip(num1 / den1, 1e-6, 1e6)
-        lambda2_new = np.clip(num2 / den2, 1e-6, 1e6)
-        lambda3_new = np.clip(num3 / den3, 1e-6, 1e6)
-
+    
+        # Component 1 (background)
+        # data_contrib_1: responsibility-weighted total counts
+        # prior_contrib_1: Gamma prior pseudo-counts scaled by tau
+        # data_weight_1: responsibility-weighted replicate count
+        # prior_weight_1: Gamma prior strength scaled by tau
+        data_contrib_1 = gamma1 * X_sum
+        prior_contrib_1 = tau * (a1 - 1.0)
+        data_weight_1 = gamma1 * r
+        prior_weight_1 = tau * b1
+    
+        lambda1_new = np.clip(
+            (data_contrib_1 + prior_contrib_1) /
+            (data_weight_1 + prior_weight_1 + eps),
+            1e-6, 1e6
+        )
+    
+        # Component 2 (contaminant)
+        data_contrib_2 = gamma2 * X_sum
+        prior_contrib_2 = tau * (a2 - 1.0)
+        data_weight_2 = gamma2 * r
+        prior_weight_2 = tau * b2
+    
+        lambda2_new = np.clip(
+            (data_contrib_2 + prior_contrib_2) /
+            (data_weight_2 + prior_weight_2 + eps),
+            1e-6, 1e6
+        )
+    
+        # Component 3 (signal)
+        data_contrib_3 = gamma3 * X_sum
+        prior_contrib_3 = tau * (a3 - 1.0)
+        data_weight_3 = gamma3 * r
+        prior_weight_3 = tau * b3
+    
+        lambda3_new = np.clip(
+            (data_contrib_3 + prior_contrib_3) /
+            (data_weight_3 + prior_weight_3 + eps),
+            1e-6, 1e6
+        )
+    
+        # Updated mixing proportions with Dirichlet prior
         pi_new = gamma.sum(axis=0) + alpha - 1.0
         pi_new = pi_new / np.sum(pi_new)
-
+    
         # Store histories
         loglik_history.append(loglik)
         lambda1_history.append(lambda1_new.copy())
         lambda2_history.append(lambda2_new.copy())
         lambda3_history.append(lambda3_new.copy())
-        tau_history.append(tau.copy())
+        tau_history.append(tau)          # tau is scalar now
         pi_history.append(pi_new.copy())
         gamma_history.append(gamma.copy())
-
+    
         alpha_history.append(alpha.copy())
         a_history.append(np.array([a1, a2, a3], dtype=float))
         b_history.append(np.array([b1, b2, b3], dtype=float))
-
+    
         # Convergence
         delta_lambda = (
             np.max(np.abs(lambda1_new - lambda1)) +
@@ -208,7 +273,7 @@ def run_em_hierarchical(
             np.max(np.abs(lambda3_new - lambda3))
         )
         delta_pi = np.max(np.abs(pi_new - pi))
-
+    
         if it > 0:
             if (
                 abs(loglik_history[-1] - loglik_history[-2]) < tol_loglik
@@ -216,14 +281,14 @@ def run_em_hierarchical(
                 and delta_pi < tol_params
             ):
                 break
-
+    
         # Commit updates
         lambda1 = lambda1_new
         lambda2 = lambda2_new
         lambda3 = lambda3_new
         pi = pi_new
 
-    # %% Final output
+# %% Final output
     return {
         "loglik_history": loglik_history,
         "lambda1_history": lambda1_history,
