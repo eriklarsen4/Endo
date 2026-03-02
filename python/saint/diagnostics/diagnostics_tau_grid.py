@@ -12,38 +12,35 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-
 # %% Summaries
-
 def summarize_tau_grid(tau_grid_results):
     """
     Summarize the results of the tau grid search for a single bait.
     Returns a DataFrame with one row per tau value.
     """
-
     rows = []
 
-    for tau, result in tau_grid_results.items():
-        gamma = result["gamma"]  # n × 3
-        mean_gamma = gamma.mean(axis=0)  # vector of length 3
+    for tau, res in tau_grid_results.items():
+        lambda1 = res["lambda1"]
+        lambda2 = res["lambda2"]
+        lambda3 = res["lambda3"]
+
+        pi = res["pi"]              # shape (3,)
+        gamma = res["gamma"]        # shape (n, 3)
 
         rows.append({
             "tau": tau,
-            "final_loglik": result["loglik_history"][-1],
-            "lambda1": result["lambda1"],
-            "lambda2": result["lambda2"],
-            "lambda3": result["lambda3"],
-            "pi1": result["pi"][0],
-            "pi2": result["pi"][1],
-            "pi3": result["pi"][2],
-            "mean_gamma1": mean_gamma[0],
-            "mean_gamma2": mean_gamma[1],
-            "mean_gamma3": mean_gamma[2],
+            "loglik": res["loglik_history"][-1],
+            "lambda1_mean": float(np.mean(lambda1)),
+            "lambda2_mean": float(np.mean(lambda2)),
+            "lambda3_mean": float(np.mean(lambda3)),
+            "pi1": float(pi[0]),
+            "pi2": float(pi[1]),
+            "pi3": float(pi[2]),
+            "mean_gamma3": float(np.mean(gamma[:, 2])),
         })
 
-    df = pd.DataFrame(rows)
-    return df.sort_values("tau")
-
+    return pd.DataFrame(rows).sort_values("tau")
 
 # %% Plotting
 
@@ -59,17 +56,17 @@ def plot_tau_grid(df, best_tau, bait_name):
 
     # Log-likelihood
     ax = axes[0, 0]
-    ax.plot(df["tau"], df["final_loglik"], marker="o")
+    ax.plot(df["tau"], df["loglik"], marker="o")
     ax.axvline(best_tau, color="red")
     ax.set_xlabel("Tau")
     ax.set_ylabel("Final log likelihood")
     ax.set_title(f"Tau vs Final Log-Likelihood — {bait_name}")
 
-    # Lambda parameters
+    # Lambda parameters (means)
     ax = axes[0, 1]
-    ax.plot(df["tau"], df["lambda1"], label="lambda1")
-    ax.plot(df["tau"], df["lambda2"], label="lambda2")
-    ax.plot(df["tau"], df["lambda3"], label="lambda3")
+    ax.plot(df["tau"], df["lambda1_mean"], label="lambda1 mean")
+    ax.plot(df["tau"], df["lambda2_mean"], label="lambda2 mean")
+    ax.plot(df["tau"], df["lambda3_mean"], label="lambda3 mean")
     ax.axvline(best_tau, color="red")
     ax.set_xlabel("Tau")
     ax.set_ylabel("Lambda value")

@@ -22,52 +22,79 @@ REFINE_POINTS = 7
 # %% Tau grid search
 def run_tau_grid(X, hyperparams, biological_bait):
     """
-   Perform a two stage grid search for the global shrinkage hyperparameter tau.
-   The function evaluates a coarse log spaced grid followed by a refinement grid
-   centered on the best coarse tau. Full EM results are stored for each tau
-   value. Only the tau entry in the hyperparameter dictionary is modified. All
-   other hyperparameters are filled by the EM wrapper if not provided.
-   
-   Parameters
-   
-   X : array
-    Data matrix for the current bait with shape n × r.
+    Perform a two-stage grid search over the global shrinkage hyperparameter tau
+    for a single bait. The function evaluates a coarse log-spaced grid followed
+    by a refinement grid centered on the best coarse tau. For each tau value,
+    the hierarchical EM algorithm is run to convergence and all model outputs
+    and diagnostics are recorded.
+
+    Parameters
     
-   hyperparams : dict
-    Optional hyperparameters for the hierarchical EM model. Users may supply
-    overrides but defaults are constructed internally for any missing entries.
-    Only the tau entry is overridden during the grid search.
+    X : array-like, shape (n_proteins, n_replicates)
+        The data matrix for the current bait. Each row corresponds to a protein
+        and each column corresponds to a replicate measurement.
+
+    hyperparams : dict
+        Hyperparameters for the hierarchical EM model. Any missing entries are
+        filled internally by the EM wrapper. Only the "tau" entry is modified
+        during the grid search; all other hyperparameters remain unchanged.
+
+    biological_bait : str
+        Identifier for the current bait. Used only for labeling and diagnostics.
+
+    Returns
     
-   biological_bait : str
-    Identifier for the current bait.
+    dict
+        A dictionary containing the following entries:
+
+        best_tau : float
+            The tau value that produced the highest final log-likelihood across
+            both the coarse and refinement grids.
+
+        best_result : dict
+            The full EM output corresponding to best_tau. This includes:
+                - lambda1, lambda2, lambda3 : component means
+                - pi : mixture proportions
+                - gamma : posterior component probabilities
+                - loglik_history : list of log-likelihood values per EM iteration
+                - convergence_info : dict describing EM convergence diagnostics
+                - iteration_count : number of EM iterations performed
+
+        tau_grid_results : dict
+            A mapping from each tau value (float) to the full EM result for that
+            tau. Each entry contains the same fields as best_result.
+
+        convergence_info : dict
+            A mapping from each tau value to the EM convergence diagnostics
+            returned by the EM wrapper. This allows inspection of EM behavior
+            across the entire grid.
+
+        iteration_counts : dict
+            A mapping from each tau value to the number of EM iterations
+            performed for that tau.
+
+        tau_grid : list of float
+            The complete set of tau values evaluated across both the coarse and
+            refinement grids, sorted in ascending order.
+
+    Notes
     
-   Returns
-   
-   dict
-       A dictionary containing best_tau, best_result, and tau_grid_results.
-       
-   Model parameters
-   
-   The model parameters lambda1, lambda2, lambda3, pi, and gamma are estimated
-   by the EM algorithm and are not supplied by the user.
-   
-   Hyperparameters
-   
-   The hyperparameters alpha, a_k, b_k, and tau may be supplied in the
-   hyperparameter dictionary but are not required. Any missing entries are filled
-   with internal defaults. The tau entry is overridden by the grid search. All
-   other hyperparameters remain unchanged unless explicitly provided.
-   
-   Tau grid tuning parameters
-   
-   The coarse and refinement grid ranges and resolutions define the search over
-   tau. These are tuning parameters for the grid search procedure and are not
-   model hyperparameters.
-   """
+    - The coarse grid is log-spaced between 10^COARSE_MIN and 10^COARSE_MAX.
+    - The refinement grid is log-spaced around log10(best_tau) with a half-range
+      of REFINE_HALF_RANGE.
+    - Only the tau entry in the hyperparameter dictionary is modified during the
+      search. All other hyperparameters remain unchanged.
+    - The EM wrapper must return loglik_history, convergence_info, and
+      iteration_count for diagnostics to be recorded.
+    """
 
     # %% Stage 1: coarse grid
     coarse_grid = np.logspace(COARSE_MIN, COARSE_MAX, num=COARSE_POINTS)
+
     tau_grid_results = {}
+    convergence_info = {}
+    iteration_counts = {}
+
     best_tau = None
     best_loglik = -np.inf
     best_result = None
@@ -76,8 +103,21 @@ def run_tau_grid(X, hyperparams, biological_bait):
         hyper = dict(hyperparams)
         hyper["tau"] = float(tau)
 
-        result = run_em_hierarchical(X, hyperparams, biological_bait)
+        # FIX: use hyper, not hyperparams
+        result = run_em_hierarchical(
+            X=X,
+            hyperparams=hyper,
+            biological_bait=biological_bait,
+            max_iter=hyper.get("max_iter", 100),
+            tol_loglik=hyper.get("tol_loglik", 1e-6),
+            tol_params=hyper.get("tol_params", 1e-6),
+            seed=hyper.get("seed", None),
+            )
         tau_grid_results[tau] = result
+
+        # Extract diagnostics
+        convergence_info[tau] = result.get("convergence_info", {})
+        iteration_counts[tau] = result.get("iteration_count", None)
 
         final_loglik = result["loglik_history"][-1]
         if final_loglik > best_loglik:
@@ -98,19 +138,22 @@ def run_tau_grid(X, hyperparams, biological_bait):
         result = run_em_hierarchical(X, hyper, biological_bait)
         tau_grid_results[tau] = result
 
+        # Extract diagnostics
+        convergence_info[tau] = result.get("convergence_info", {})
+        iteration_counts[tau] = result.get("iteration_count", None)
+
         final_loglik = result["loglik_history"][-1]
         if final_loglik > best_loglik:
             best_loglik = final_loglik
             best_tau = tau
             best_result = result
-    
-    print("BAIT:", biological_bait)
-    print("TAU GRID:", sorted(tau_grid_results.keys()))
-
 
     # %% Final output
     return {
         "best_tau": best_tau,
         "best_result": best_result,
-        "tau_grid_results": tau_grid_results
+        "tau_grid_results": tau_grid_results,
+        "convergence_info": convergence_info,
+        "iteration_counts": iteration_counts,
+        "tau_grid": sorted(tau_grid_results.keys()),
     }

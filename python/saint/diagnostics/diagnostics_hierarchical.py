@@ -96,3 +96,29 @@ def make_hierarchical_plots(results_em, bait_name):
 
     return figs
 
+# %% Distribution of posterior probabilities across baits
+def plot_gamma3_density(results_df):
+    """
+    Plot the distribution of gamma3 values across all baits.
+    """
+    plt.figure()
+    plt.hist(results_df["gamma3"], bins=50, alpha=0.7, color="steelblue")
+    plt.xlabel("gamma3")
+    plt.ylabel("Count")
+    plt.title("Distribution of gamma3 across all baits")
+    plt.grid(True, alpha=0.3)
+
+# %% Pipeline-level kde of posterior probabililties of gamma3's
+def plot_multi_bait_summary(results_df, bait_list):
+    """
+    Plot mean gamma3 per bait as a simple multi-bait summary.
+    """
+    mean_gamma3 = results_df.groupby("bait")["gamma3"].mean().reindex(bait_list)
+
+    plt.figure(figsize=(8, 4))
+    plt.plot(bait_list, mean_gamma3, marker="o")
+    plt.xticks(rotation=45, ha="right")
+    plt.ylabel("Mean gamma3")
+    plt.title("Mean gamma3 per bait")
+    plt.grid(True, alpha=0.3)
+

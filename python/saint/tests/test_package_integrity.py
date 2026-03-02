@@ -46,6 +46,7 @@ def test_all_expected_modules_importable():
         "saint.model.hierarchical_likelihood",
         "saint.diagnostics.diagnostics_classical",
         "saint.diagnostics.diagnostics_hierarchical",
+        "saint.validation.validation",
     ]
 
     for module in expected_modules:
@@ -55,7 +56,7 @@ def test_all_expected_modules_importable():
 def test_all_directories_have_init_files():
     """
     Ensure every directory in the saint package contains an __init__.py file.
-    This enforces stable imports and prevents namespace drift.
+    This enforces stable imports.
     """
 
     saint_path = os.path.dirname(saint.__file__)

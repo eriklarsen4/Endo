@@ -41,6 +41,8 @@ def test_em_runs_and_returns_expected_keys():
         "lambda2",
         "pi",
         "gamma",
+        "convergence_info",
+        "iteration_count",
     }
 
     assert expected_keys.issubset(results.keys())

@@ -27,7 +27,7 @@ def test_make_classical_plots_returns_figures():
     figs = make_classical_plots(results_em, bait_name="B1")
 
     # Expected figure keys
-    expected_keys = {"loglik", "lambda", "pi", "gamma"}
+    expected_keys = {"loglik", "lambda", "pi", "gamma", "gamma_heatmap"}
     assert expected_keys.issubset(figs.keys())
 
     # All returned objects must be matplotlib Figure instances

@@ -148,9 +148,9 @@ def run_em_hierarchical(
     n, r = X.shape
 
     # Prey-dimensional lambda initializations for each component
-    lambda1 = X.mean(axis=1).astype(float).copy()
+    lambda1 = np.full(n, 0.1, dtype=float)
     lambda2 = np.full(n, 0.5, dtype=float)
-    lambda3 = np.full(n, 0.1, dtype=float)
+    lambda3 = X.mean(axis=1).astype(float).copy()
 
     # Global shrinkage strength for Gamma priors (defaults to 1.0)
     tau = float(hyperparams.get("tau", 1.0))

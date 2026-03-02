@@ -10,25 +10,56 @@ Created on Sun Feb  8 23:36:08 2026
 import pandas as pd
 from pathlib import Path
 
-# %% 
-
+# %%
 def load_bait_data(input_obj):
     """
-    Flexible loader that accepts either:
-      - a pandas DataFrame
-      - a file path to a CSV
+    Load IPMS data and construct per-bait replicate matrices for the hierarchical
+    SAINT pipeline. This function accepts either a wide-format DataFrame or a
+    path to a CSV file, converts the data into the long format required by the
+    model, and assembles the per-bait numeric matrices used by the hierarchical
+    EM algorithm and tau grid search.
 
-    Returns:
-      bait_list: list of bait names
-      X_by_bait: dict mapping bait → numeric matrix
-      metadata: dict containing bait-level biological metadata
+    The loader preserves all replicates, performs no collapsing, and enforces a
+    deterministic protein ordering within each bait. The resulting metadata
+    includes the bait list and the per-bait protein lists, which define the
+    canonical row ordering for all downstream model outputs.
+
+    Parameters
+    
+    input_obj : DataFrame or str
+        Raw APMS data in wide format (Protein column plus replicate columns
+        of the form <condition>_<bait>_<rep>), or a path to a .CSV file
+        containing such a table.
+
+    Returns
+    
+    bait_list : list of str
+        Sorted list of bait names present in the dataset.
+
+    X_by_bait : dict
+        Dictionary mapping each bait to its numeric replicate matrix
+        (rows = proteins in deterministic order, columns = replicates).
+
+    metadata : dict
+        Dictionary containing:
+            - "baits": the sorted bait list
+            - "proteins_by_bait": dict mapping each bait to the ordered list
+              of proteins used to construct the corresponding X matrix
+
+    Notes
+    
+    This function performs only data loading and restructuring. It does not
+    apply the EM model, tau grid search, or any statistical transformations.
+    All model parameters (lambda1, lambda2, lambda3, pi, gamma) are estimated
+    downstream by the hierarchical EM algorithm and are not supplied here.
+
+    The replicate structure is preserved exactly as provided in the input.
+    No averaging, collapsing, or normalization is performed at this stage.
     """
 
     # Case 1: user passed a DataFrame
     if isinstance(input_obj, pd.DataFrame):
         df = input_obj.copy()
-
-    # Case 2: user passed a file path
     else:
         path = Path(input_obj)
         if not path.exists():
@@ -41,53 +72,79 @@ def load_bait_data(input_obj):
     # Identify all baits
     bait_list = sorted(long_df["Bait"].unique())
 
-    # Split into numeric matrices per bait
     X_by_bait = {}
+    proteins_by_bait = {}
+
     for bait in bait_list:
         df_b = long_df[long_df["Bait"] == bait].copy()
 
-        # Sort by Protein to ensure consistent row order
+        # Deterministic row order
         df_b = df_b.sort_values("Protein").reset_index(drop=True)
 
-        # Extract all numeric replicate columns (exclude metadata)
+        # Store per-bait protein list
+        proteins_by_bait[bait] = df_b["Protein"].tolist()
+
+        # Extract numeric replicate columns
         numeric_cols = [c for c in df_b.columns if c not in ("Protein", "Bait")]
         X_by_bait[bait] = df_b[numeric_cols].astype(float).to_numpy()
 
     metadata = {
-    "baits": bait_list,
-    "proteins_by_bait": {
-        bait: df_b["Protein"].tolist()
-        for bait, df_b in {
-            bait: long_df[long_df["Bait"] == bait].sort_values("Protein")
-            for bait in bait_list
-        }.items()
+        "baits": bait_list,
+        "proteins_by_bait": proteins_by_bait,
     }
-}
 
     return bait_list, X_by_bait, metadata
+
 
 # %% Extract bait matrix (wide → long with replicate preservation)
 
 def extract_bait_matrix(df):
     """
-    Convert a wide format dataframe into the long format required by SAINT.
+    Convert a wide-format APMS table into the long-format structure required by
+    the hierarchical SAINT pipeline. The input table must contain a Protein
+    column and replicate measurement columns of the form:
 
-    The input df has a Protein column and additional columns of the form
-    <condition>_<bait>_<rep>.
+        <condition>_<bait>_<rep>
 
-    Replicates are preserved as separate columns. No collapsing is performed
-    in this function. Classical SAINT collapses replicates internally, while
-    hierarchical SAINT uses the full replicate matrix.
+    where <bait> identifies the bait name and <rep> is an integer replicate
+    index. Replicates are preserved exactly as provided; no collapsing or
+    averaging is performed.
 
-    The output is a long format dataframe with columns:
-    Protein, Bait, rep1, rep2, rep3, etc.
+    This function parses the wide-format replicate columns, groups them by bait,
+    and reconstructs a long-format table in which each row corresponds to a
+    (Protein, Bait) pair and each replicate is placed in its own column
+    (rep1, rep2, rep3, ...). Missing replicates for a bait are filled with zeros
+    to maintain a consistent replicate structure.
+
+    Parameters
+    
+    df : DataFrame
+        Wide-format IPMS data containing a Protein column and replicate columns
+        named according to the <condition>_<bait>_<rep> convention.
+
+    Returns
+    
+    long_df : DataFrame
+        Long-format table with columns:
+            Protein : str
+            Bait    : str
+            rep1, rep2, rep3, ... : float
+        Each bait appears once per protein, and replicate columns are ordered
+        by increasing replicate index.
+
+    Notes
+    
+    This function performs only structural reshaping. It does not normalize,
+    filter, or transform the data. The resulting long-format table is consumed
+    by `load_bait_data`, which enforces deterministic protein ordering and
+    constructs the per-bait numeric matrices used by the hierarchical EM model
+    and tau grid search.
+
     """
 
     protein = df["Protein"].tolist()
     value_cols = [c for c in df.columns if c != "Protein"]
 
-    # Parse wide columns into nested structure:
-    # parsed[bait][rep_index] = vector of counts
     parsed = {}
 
     for col in value_cols:
@@ -95,6 +152,8 @@ def extract_bait_matrix(df):
         if len(parts) < 3:
             continue
 
+        # NAMING SCHEME:
+        # <condition>_<bait>_<rep>
         bait_name = parts[1]
         rep_label = parts[2]
 
@@ -110,7 +169,7 @@ def extract_bait_matrix(df):
 
         parsed[bait_name][rep_index] = counts
 
-    # Build long-format dataframe with replicate columns
+    # Build long-format dataframe
     records = []
 
     for bait_name, rep_dict in parsed.items():
@@ -123,15 +182,12 @@ def extract_bait_matrix(df):
             }
 
             for r in range(1, max_rep + 1):
+                # Missing replicates → zeros
                 row[f"rep{r}"] = float(rep_dict.get(r, pd.Series([0]*len(protein)))[i])
 
             records.append(row)
 
     long_df = pd.DataFrame(records)
     return long_df
-
-
-
-
 
 

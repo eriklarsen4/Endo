@@ -13,6 +13,7 @@ from saint.model.classical_likelihood import compute_loglik
 # %% Tests
 
 def test_compute_classical_loglik_runs_and_returns_scalar():
+    # X: 2 preys × 2 replicates
     X = np.array([
         [1, 2],
         [0, 1],

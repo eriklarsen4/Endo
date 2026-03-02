@@ -7,32 +7,51 @@ Created on Sat Feb 21 12:06:37 2026
 
 # %% Imports
 
+import numpy as np
 import pandas as pd
-from saint.io.data_input import extract_bait_matrix
+from saint.io.data_input import load_bait_data
 
 
-# %% Test reshape preserves replicate columns
+# %% Tests
 
-def test_extract_bait_matrix_rep_preservation():
+def test_load_bait_data_basic_structure():
+    # Minimal synthetic wide-format input
     df = pd.DataFrame({
         "Protein": ["P1", "P2"],
         "condX_BaitA_1": [5, 1],
         "condX_BaitA_2": [7, 0],
         "condX_BaitB_1": [3, 0],
-        "condX_BaitB_2": [4, 1]
+        "condX_BaitB_2": [4, 1],
     })
 
-    long_df = extract_bait_matrix(df)
+    bait_list, X_by_bait, metadata = load_bait_data(df)
 
-    assert set(long_df.columns) == {
-        "Protein", "Bait", "rep1", "rep2"
-    }
+    # Bait list must contain both baits
+    assert set(bait_list) == {"BaitA", "BaitB"}
 
-    df_a = long_df[long_df["Bait"] == "BaitA"]
-    assert df_a["rep1"].tolist() == [5.0, 1.0]
-    assert df_a["rep2"].tolist() == [7.0, 0.0]
+    # Replicate matrices must exist for each bait
+    assert "BaitA" in X_by_bait
+    assert "BaitB" in X_by_bait
 
-    df_b = long_df[long_df["Bait"] == "BaitB"]
-    assert df_b["rep1"].tolist() == [3.0, 0.0]
-    assert df_b["rep2"].tolist() == [4.0, 1.0]
+    XA = X_by_bait["BaitA"]
+    XB = X_by_bait["BaitB"]
 
+    # Each matrix must be (n_proteins × n_replicates)
+    assert XA.shape == (2, 2)
+    assert XB.shape == (2, 2)
+
+    # Values must match input
+    assert np.allclose(XA[:, 0], [5, 1])
+    assert np.allclose(XA[:, 1], [7, 0])
+
+    assert np.allclose(XB[:, 0], [3, 0])
+    assert np.allclose(XB[:, 1], [4, 1])
+
+    # Metadata invariants
+    assert "proteins_by_bait" in metadata
+    assert metadata["proteins_by_bait"]["BaitA"] == ["P1", "P2"]
+    assert metadata["proteins_by_bait"]["BaitB"] == ["P1", "P2"]
+
+    assert "replicate_map" in metadata
+    assert metadata["replicate_map"]["BaitA"] == ["1", "2"]
+    assert metadata["replicate_map"]["BaitB"] == ["1", "2"]

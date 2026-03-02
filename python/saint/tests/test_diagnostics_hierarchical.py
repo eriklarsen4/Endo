@@ -53,7 +53,14 @@ def test_make_hierarchical_plots_returns_figures():
 
     figs = make_hierarchical_plots(results_em, bait_name="B1")
 
-    expected_keys = {"loglik", "lambda", "pi", "priors", "gamma"}
+    expected_keys = {
+        "loglik",
+        "lambda",
+        "pi",
+        "priors",
+        "gamma",
+        "gamma_heatmap",
+    }
     assert expected_keys.issubset(figs.keys())
 
     # All returned objects must be matplotlib Figure instances

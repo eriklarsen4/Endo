@@ -27,7 +27,7 @@ def run_em_classical(
     mixture model.
 
     Model structure
-    
+
     For a given bait, X_sum is a length n vector of spectral counts:
       n: number of prey proteins for this bait
 
@@ -48,7 +48,7 @@ def run_em_classical(
     downstream code.
 
     EM algorithm
-    
+
     The EM algorithm alternates between:
 
       • E step:
@@ -65,9 +65,9 @@ def run_em_classical(
               E_Z[ log p(X_sum, Z | lambda1, lambda2, pi) ]
           where the expectation is taken with respect to the posterior
           distribution of Z computed in the E step.
-
-    Returns
     
+    Returns
+
     dict
         Dictionary containing:
             loglik_history : list of float
@@ -80,6 +80,7 @@ def run_em_classical(
                 Mixture weight estimates (length 2) at each iteration.
             gamma_history : list of (n × 2) arrays
                 Posterior membership probabilities for each prey and component.
+
             lambda1 : array of shape (n,)
                 Final background rate estimates.
             lambda2 : array of shape (n,)
@@ -89,44 +90,67 @@ def run_em_classical(
             gamma : array of shape (n, 2)
                 Final posterior membership probabilities.
 
+            convergence_info : dict
+                Convergence diagnostics including:
+                    "converged" : bool
+                    "reason" : str indicating the stopping criterion
+                    "final_delta_loglik" : float or None
+                    "final_delta_lambda" : float
+                    "final_delta_pi" : float
+
+            iteration_count : int
+                Number of EM iterations performed.
+                
     Parameters
-    
+
     X_sum : array of shape (n,)
         Collapsed spectral counts for n prey proteins for this bait.
+
     hyperparams : dict
         Contains initial values for the EM algorithm:
             "lambda1_init" : initial Poisson rates for the background component
             "lambda2_init" : initial Poisson rates for the signal component
             "pi_init"      : initial mixing proportions (length 2)
+
         These are initialization values, not Bayesian hyperparameters.
+        Under the unified architecture, this dictionary may contain additional
+        keys used by other pipelines (e.g., alpha1, alpha2, tau, tau_grid).
+        The classical EM wrapper ignores keys it does not use.
+
     biological_bait : str
         Biological name of the bait used for labeling downstream results.
+
     max_iter : int
         Maximum number of EM iterations.
+
     tol_loglik : float
         Convergence tolerance for changes in the log likelihood.
+
     tol_params : float
         Convergence tolerance for changes in the parameter estimates.
+
     seed : int
         Random seed for reproducibility of any randomized initialization.
+
     verbose : bool
         If True, print iteration level diagnostics.
 
     Model parameters
-    
-    The model parameters are lambda1, lambda2, pi, and gamma. These are
+
+    The model parameters are "lambda1", "lambda2", "pi", and "gamma". These are
     estimated by the EM algorithm and are not supplied by the user, except
     for their initial values provided in the hyperparams dictionary.
 
     Hyperparameters
-    
+
     This classical EM implementation does not use Bayesian hyperparameters.
     The hyperparams dictionary is used only to supply initial values for
-    lambda1, lambda2, and pi.
+    "lambda1", "lambda2", and "pi". Additional keys may be present for compatibility
+    with the unified pipeline and are ignored.
 
     Control parameters
-    
-    The control parameters max_iter, tol_loglik, tol_params, seed, and verbose
+
+    The control parameters, "max_iter", "tol_loglik", "tol_params", "seed", and "verbose"
     govern the convergence behavior and reproducibility of the EM algorithm.
     These are not part of the model and are not estimated.
     """

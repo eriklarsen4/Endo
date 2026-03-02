@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Feb 21 18:47:26 2026
+Created on Mon Mar  2 12:07:35 2026
 
 @author: Erik
 """
@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 from saint.model.classical_em_wrapper import run_em_classical
-from saint.io.data_input import extract_bait_matrix
+from saint.io.data_input import load_bait_data
 from saint.diagnostics.diagnostics_classical import make_classical_plots
 
 
@@ -20,135 +20,264 @@ from saint.diagnostics.diagnostics_classical import make_classical_plots
 def run_classical_pipeline(
     input_data,
     bait_names,
-    metadata,
+    metadata=None,
+    hyperparams=None,
+    make_plots=False,
+    plot_dir=None,
     max_iter=200,
     tol_loglik=1e-6,
     tol_params=1e-6,
     seed=1,
     verbose=False,
-    make_plots=False,
-    plot_dir="plots_classical"
 ):
     """
-    Run the classical SAINT pipeline. This function collapses replicate level counts
-    to a single total count per prey, runs classical EM for each bait, merges final
-    parameter values into the original input dataframe, and returns a unified results
-    object containing raw EM histories, metadata, and a sorted results dataframe.
+    Run the classical SAINT pipeline. This function collapses replicate-level counts
+    to a single total count per prey, runs classical EM for each bait, and returns
+    a unified results object containing raw EM outputs, typed metadata, and a
+    prey-level results dataframe aligned with the hierarchical pipeline.
 
-    input_data is the original wide format dataframe.
-    bait_names is the list of experimental baits.
-    metadata contains biological bait names, accession numbers, and molecular weights.
-    max_iter, tol_loglik, tol_params, seed, verbose, make_plots, and plot_dir control EM behavior.
+    Parameters
 
-    The output is a dictionary with keys raw_outputs, metadata, and results_df.
+    input_data : dict or DataFrame
+        Raw APMS data in the format expected by the data loader. The loader
+        converts the wide-format APMS table into per-bait replicate matrices
+        and constructs metadata including the per-bait protein ordering.
+
+    bait_names : list
+        List of experimental baits to analyze with the classical EM model.
+
+    metadata : dict, optional
+        Optional user-provided metadata (e.g., biological bait names, accession
+        numbers, molecular weights). These are merged into the typed metadata
+        structure produced by the loader.
+
+    hyperparams : dict, optional
+        Optional hyperparameters and initialization values for the classical EM
+        model. The classical EM wrapper uses:
+            "lambda1_init" : initial Poisson rates for the background component
+            "lambda2_init" : initial Poisson rates for the signal component
+            "pi_init"      : initial mixing proportions (length 2)
+        Any additional entries are ignored by the classical EM wrapper but are
+        preserved in the metadata for architectural symmetry.
+
+    make_plots : bool
+        If True, generate diagnostic plots for each bait.
+
+    plot_dir : str or None
+        Directory in which to save diagnostic plots. If None and make_plots is
+        True, a default directory may be used by the plotting function.
+
+    max_iter : int
+        Maximum number of EM iterations.
+
+    tol_loglik : float
+        Convergence tolerance for changes in the log likelihood.
+
+    tol_params : float
+        Convergence tolerance for changes in the parameter estimates.
+
+    seed : int
+        Random seed for reproducibility of any randomized initialization.
+
+    verbose : bool
+        If True, print iteration-level diagnostics.
+
+    Returns
+
+    dict
+        Unified results object containing:
+            - raw_outputs:
+                em_results : dict mapping each bait to the classical EM result
+                tau_info   : dict mapping each bait to an empty tau info dict
+            - metadata : typed metadata object mirroring the hierarchical pipeline
+            - results_df : combined prey-level results table with one row per
+              prey–bait pair, containing:
+                  Protein, bait,
+                  lambda1, lambda2, lambda3,
+                  tau,
+                  pi1, pi2, pi3,
+                  gamma1, gamma2, gamma3
     """
 
-    # %% Extract long format data
-    long_df = extract_bait_matrix(input_data)
+    # %% Load data via unified loader
+    metadata_arg = metadata
+    bait_list, X_by_bait, metadata = load_bait_data(input_data)
+    loader_metadata = metadata
 
-    # %% Identify controls
-    all_baits = sorted(long_df["Bait"].unique())
-    controls = [b for b in all_baits if b not in bait_names]
+    # %% Storage
+    all_results = {}
+    all_tau_info = {}
+    all_convergence_info = {}
+    all_iteration_counts = {}
 
-    controls_used = {}
-    for ctrl in controls:
-        ctrl_rows = long_df[long_df["Bait"] == ctrl]
-        rep_cols_ctrl = [c for c in ctrl_rows.columns if c.startswith("rep")]
-        controls_used[ctrl] = rep_cols_ctrl
+    # Classical pipeline has no tau grid; keep empty for symmetry
+    tau_grid = []
 
-    # %% Prepare output containers
-    raw_outputs = {}
-    results_rows = []
+    # Initialize hyperparams container
+    if hyperparams is None:
+        hyperparams = {}
+        
+    # %% Per-bait classical EM
+    rows = []
 
-    # %% Run EM per bait
-    for bait in bait_names:
+    for bait in bait_list:
+        # Skip baits not requested
+        if bait_names is not None and bait not in bait_names:
+            continue
 
-        df_bait = long_df[long_df["Bait"] == bait].copy()
-
-        rep_cols = [c for c in df_bait.columns if c.startswith("rep")]
-        X = df_bait[rep_cols].to_numpy()
+        X = X_by_bait[bait]
         X_sum = X.sum(axis=1).astype(float)
 
-        biological_bait = metadata["biological_bait_names"][bait]
+        # Biological bait name if provided
+        biological_bait = None
+        if metadata_arg is not None:
+            biological_bait = metadata_arg.get("biological_bait_names", {}).get(bait, bait)
 
+        # Mean level for initialization
         mean_level = max(X_sum.mean(), 1.0)
 
-        hyperparams = {
-            "lambda1_init": np.full(X_sum.shape[0], 0.5 * mean_level),
-            "lambda2_init": np.full(X_sum.shape[0], 1.5 * mean_level),
-            "pi_init": np.array([0.7, 0.3], dtype=float)
-        }
+        # Per-bait hyperparameters (copy to avoid cross-bait mutation)
+        hyperparams_bait = dict(hyperparams)
 
+        # Initialization values (only set if not already provided)
+        hyperparams_bait.setdefault(
+            "lambda1_init",
+            np.full(X_sum.shape[0], 0.5 * mean_level),
+        )
+        hyperparams_bait.setdefault(
+            "lambda2_init",
+            np.full(X_sum.shape[0], 1.5 * mean_level),
+        )
+        hyperparams_bait.setdefault(
+            "pi_init",
+            np.array([0.7, 0.3], dtype=float),
+        )
+
+        # Run classical EM
         results_em = run_em_classical(
             X_sum,
-            hyperparams,
+            hyperparams_bait,
             biological_bait,
             max_iter=max_iter,
             tol_loglik=tol_loglik,
             tol_params=tol_params,
             seed=seed,
-            verbose=verbose
+            verbose=verbose,
         )
 
-        # %% Plotting behavior restored
-        if make_plots:
-            figs = make_classical_plots(results_em, bait)
-            raw_outputs[bait] = {"figures": figs}
-        else:
-            raw_outputs[bait] = {}
+        # Extract convergence diagnostics
+        convergence_info = results_em.get("convergence_info", {})
+        iteration_count = results_em.get("iteration_count", None)
 
-        # Add histories regardless of plotting
-        raw_outputs[bait].update({
-            "loglik": results_em["loglik_history"],
-            "lambda1": results_em["lambda1_history"],
-            "lambda2": results_em["lambda2_history"],
-            "pi": results_em["pi_history"],
-            "gamma": results_em["gamma_history"]
-        })
+        all_results[bait] = results_em
+        all_tau_info[bait] = {}  # no tau grid in classical pipeline
+        all_convergence_info[bait] = convergence_info
+        all_iteration_counts[bait] = iteration_count
+
+        # Optional plotting
+        if make_plots:
+            figs = make_classical_plots(results_em, bait, plot_dir=plot_dir)
+            all_results[bait]["figures"] = figs
+
+        # Build prey-level rows for this bait
+        proteins = metadata["proteins_by_bait"][bait]
 
         lambda1 = results_em["lambda1"]
         lambda2 = results_em["lambda2"]
         pi = results_em["pi"]
         gamma = results_em["gamma"]
 
-        df_bait_reset = df_bait.reset_index(drop=True)
+        # Classical model has only two components; fill third with NaN for symmetry
+        lambda3 = np.full_like(lambda1, np.nan, dtype=float)
+        tau = np.full_like(lambda1, np.nan, dtype=float)
+        pi1, pi2 = pi[0], pi[1]
+        pi3 = np.nan
 
-        for i, row in df_bait_reset.iterrows():
-            results_rows.append({
-                "Protein": row["Protein"],
-                "Bait": bait,
-                **{col: row[col] for col in rep_cols},
-                "lambda1": lambda1[i],
-                "lambda2": lambda2[i],
-                "pi1": pi[0],
-                "pi2": pi[1],
-                "gamma1": gamma[i, 0],
-                "gamma2": gamma[i, 1]
-            })
+        gamma1 = gamma[:, 0]
+        gamma2 = gamma[:, 1]
+        gamma3 = np.full_like(gamma1, np.nan, dtype=float)
 
+        df_bait = pd.DataFrame({
+            "Protein": proteins,
+            "bait": bait,
+            "lambda1": lambda1,
+            "lambda2": lambda2,
+            "lambda3": lambda3,
+            "tau": tau,
+            "pi1": pi1,
+            "pi2": pi2,
+            "pi3": pi3,
+            "gamma1": gamma1,
+            "gamma2": gamma2,
+            "gamma3": gamma3,
+        })
+
+        rows.append(df_bait)
+        
     # %% Build results_df
-    results_df = pd.DataFrame(results_rows)
+    results_df = pd.concat(rows, ignore_index=True)
 
-    # %% Sort by Protein then gamma2 descending
+    # Sort by Protein then gamma3 descending (hierarchical convention)
     results_df = results_df.sort_values(
-        by=["Protein", "gamma2"],
+        by=["Protein", "gamma3"],
         ascending=[True, False],
-        ignore_index=True
+        ignore_index=True,
     )
 
-    # %% Build unified metadata
-    metadata_out = {
-        "bait_names": bait_names,
-        "biological_bait_names": metadata["biological_bait_names"],
-        "AN": metadata["AN"],
-        "MW": metadata["MW"],
-        "controls_used": controls_used
-    }
+    # %% Build the typed metadata
+
+    from saint.pipeline.metadata_types import (
+        HierarchicalMetadata,
+        UserProvidedFields,
+        InferredFields,
+        PipelineDerivedFields,
+    )
+
+    # Construct typed metadata
+    metadata_obj = HierarchicalMetadata(
+        user_provided_fields=UserProvidedFields(
+            biological_bait_names=metadata_arg.get("biological_bait_names", {}) if metadata_arg else {},
+            AN=metadata_arg.get("AN", {}) if metadata_arg else {},
+            MW=metadata_arg.get("MW", {}) if metadata_arg else {},
+            extra_fields={
+                k: v
+                for k, v in (metadata_arg or {}).items()
+                if k not in {"biological_bait_names", "AN", "MW"}
+            },
+        ),
+        inferred_fields=InferredFields(
+            baits=loader_metadata.get("baits", []),
+            proteins_by_bait=loader_metadata.get("proteins_by_bait", {}),
+            replicate_map=loader_metadata.get("replicate_map", {}),
+            conditions=loader_metadata.get("conditions", {}),
+            negative_controls_inferred=loader_metadata.get("negative_controls_inferred", []),
+            extra_fields={
+                k: v
+                for k, v in loader_metadata.items()
+                if k not in {
+                    "baits",
+                    "proteins_by_bait",
+                    "replicate_map",
+                    "conditions",
+                    "negative_controls_inferred",
+                }
+            },
+        ),
+        pipeline_derived_fields=PipelineDerivedFields(
+            bait_names=bait_names,
+            hyperparameters=hyperparams,
+            tau_grid=tau_grid,
+            convergence=all_convergence_info,
+            iteration_counts=all_iteration_counts,
+        ),
+    )
 
     # %% Final unified output
     return {
-        "raw_outputs": raw_outputs,
-        "metadata": metadata_out,
-        "results_df": results_df
+        "raw_outputs": {
+            "em_results": all_results,
+            "tau_info": all_tau_info,
+        },
+        "metadata": metadata_obj,
+        "results_df": results_df,
     }
-
