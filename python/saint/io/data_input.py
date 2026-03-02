@@ -8,7 +8,63 @@ Created on Sun Feb  8 23:36:08 2026
 # %% Imports
 
 import pandas as pd
+from pathlib import Path
 
+# %% 
+
+def load_bait_data(input_obj):
+    """
+    Flexible loader that accepts either:
+      - a pandas DataFrame
+      - a file path to a CSV
+
+    Returns:
+      bait_list: list of bait names
+      X_by_bait: dict mapping bait → numeric matrix
+      metadata: dict containing bait-level biological metadata
+    """
+
+    # Case 1: user passed a DataFrame
+    if isinstance(input_obj, pd.DataFrame):
+        df = input_obj.copy()
+
+    # Case 2: user passed a file path
+    else:
+        path = Path(input_obj)
+        if not path.exists():
+            raise FileNotFoundError(f"Input file not found: {input_obj}")
+        df = pd.read_csv(path)
+
+    # Convert wide → long
+    long_df = extract_bait_matrix(df)
+
+    # Identify all baits
+    bait_list = sorted(long_df["Bait"].unique())
+
+    # Split into numeric matrices per bait
+    X_by_bait = {}
+    for bait in bait_list:
+        df_b = long_df[long_df["Bait"] == bait].copy()
+
+        # Sort by Protein to ensure consistent row order
+        df_b = df_b.sort_values("Protein").reset_index(drop=True)
+
+        # Extract all numeric replicate columns (exclude metadata)
+        numeric_cols = [c for c in df_b.columns if c not in ("Protein", "Bait")]
+        X_by_bait[bait] = df_b[numeric_cols].astype(float).to_numpy()
+
+    metadata = {
+    "baits": bait_list,
+    "proteins_by_bait": {
+        bait: df_b["Protein"].tolist()
+        for bait, df_b in {
+            bait: long_df[long_df["Bait"] == bait].sort_values("Protein")
+            for bait in bait_list
+        }.items()
+    }
+}
+
+    return bait_list, X_by_bait, metadata
 
 # %% Extract bait matrix (wide → long with replicate preservation)
 

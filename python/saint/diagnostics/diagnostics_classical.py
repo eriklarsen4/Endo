@@ -19,6 +19,14 @@ def make_classical_plots(results_em, bait_name):
     Create diagnostic plots for the classical SAINT EM results.
     This function returns a dictionary of matplotlib Figure objects.
     Figures will automatically appear in IDEs such as Spyder or VS Code.
+
+    The diagnostics include:
+        - Log-likelihood trajectory
+        - Lambda1 and lambda2 trajectories
+        - Mixture weight (pi1, pi2) trajectories
+        - Gamma1 and gamma2 distributions
+
+    All plot titles explicitly include the bait name.
     """
 
     sns.set_style("whitegrid")
@@ -27,7 +35,8 @@ def make_classical_plots(results_em, bait_name):
 
     # %% Log likelihood trajectory
     fig_loglik = plt.figure()
-    plt.plot(results_em["loglik_history"], marker="o")
+    loglik_history = results_em["loglik_history"]
+    plt.plot(loglik_history, marker="o")
     plt.xlabel("Iteration")
     plt.ylabel("Log likelihood")
     plt.title(f"Classical SAINT log likelihood trajectory for {bait_name}")
@@ -35,11 +44,14 @@ def make_classical_plots(results_em, bait_name):
 
     # %% Lambda trajectories
     fig_lambda = plt.figure()
-    lambda1_hist = np.array(results_em["lambda1_history"])
-    lambda2_hist = np.array(results_em["lambda2_history"])
+    lambda1_history = np.array(results_em["lambda1_history"])
+    lambda2_history = np.array(results_em["lambda2_history"])
 
-    plt.plot(lambda1_hist.mean(axis=1), label="lambda1 mean")
-    plt.plot(lambda2_hist.mean(axis=1), label="lambda2 mean")
+    mean_lambda1_per_iteration = lambda1_history.mean(axis=1)
+    mean_lambda2_per_iteration = lambda2_history.mean(axis=1)
+
+    plt.plot(mean_lambda1_per_iteration, label="lambda1 mean")
+    plt.plot(mean_lambda2_per_iteration, label="lambda2 mean")
     plt.xlabel("Iteration")
     plt.ylabel("Mean lambda value")
     plt.title(f"Classical SAINT lambda trajectories for {bait_name}")
@@ -48,9 +60,13 @@ def make_classical_plots(results_em, bait_name):
 
     # %% Pi trajectory
     fig_pi = plt.figure()
-    pi_hist = np.array(results_em["pi_history"])
-    plt.plot(pi_hist[:, 0], label="pi1")
-    plt.plot(pi_hist[:, 1], label="pi2")
+    pi_history = np.array(results_em["pi_history"])
+
+    mixture_weight_background = pi_history[:, 0]
+    mixture_weight_signal = pi_history[:, 1]
+
+    plt.plot(mixture_weight_background, label="pi1 (background)")
+    plt.plot(mixture_weight_signal, label="pi2 (signal)")
     plt.xlabel("Iteration")
     plt.ylabel("Mixture weight")
     plt.title(f"Classical SAINT pi trajectories for {bait_name}")
@@ -59,10 +75,11 @@ def make_classical_plots(results_em, bait_name):
 
     # %% Gamma distributions
     fig_gamma = plt.figure()
-    gamma_final = results_em["gamma"]
-    plt.hist(gamma_final[:, 0], bins=30, alpha=0.5, label="gamma1")
-    plt.hist(gamma_final[:, 1], bins=30, alpha=0.5, label="gamma2")
-    plt.xlabel("Gamma value")
+    posterior_membership_final = results_em["gamma"]
+
+    plt.hist(posterior_membership_final[:, 0], bins=30, alpha=0.5, label="gamma1 (background)")
+    plt.hist(posterior_membership_final[:, 1], bins=30, alpha=0.5, label="gamma2 (signal)")
+    plt.xlabel("Posterior membership probability")
     plt.ylabel("Count")
     plt.title(f"Classical SAINT gamma distributions for {bait_name}")
     plt.legend()

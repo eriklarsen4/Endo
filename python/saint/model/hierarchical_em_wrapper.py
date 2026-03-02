@@ -8,7 +8,7 @@ Created on Sat Feb 21 19:10:58 2026
 # %% Imports
 
 import numpy as np
-
+import pandas as pd
 
 # %% Hierarchical EM wrapper
 
@@ -23,51 +23,51 @@ def run_em_hierarchical(
     verbose=False
 ):
     """
-    Hierarchical EM algorithm for a single bait under a three‑component Poisson
+    Hierarchical EM algorithm for a single bait under a three component Poisson
     mixture model with empirical Bayes updates for the prior hyperparameters.
 
     Model structure
     
     For a given bait, X is an n × r matrix of spectral counts:
-      - n: number of prey proteins
-      - r: number of technical or biological replicates
+      n: number of prey proteins
+      r: number of technical or biological replicates
 
     Each prey belongs to one of three latent components:
 
-      • Component 1 (index 0): background / non‑interactor
-        - Poisson rate: lambda1
-        - Represents proteins with only stochastic or technical counts.
+      • Component 1 (index 0): background or non interactor
+        Poisson rate: lambda1
+        Represents proteins with only stochastic or technical counts.
 
-      • Component 2 (index 1): contaminant / high‑background
-        - Poisson rate: lambda2
-        - Represents proteins with elevated counts not attributable to specific
-          interaction (e.g., sticky binders, common contaminants).
+      • Component 2 (index 1): contaminant or high background
+        Poisson rate: lambda2
+        Represents proteins with elevated counts not attributable to specific
+        interaction such as sticky binders or common contaminants.
 
-      • Component 3 (index 2): true signal / interactor
-        - Poisson rate: lambda3
-        - Represents proteins enriched due to true biological interaction.
+      • Component 3 (index 2): true signal or interactor
+        Poisson rate: lambda3
+        Represents proteins enriched due to true biological interaction.
 
     Priors
     
-    - Mixture weights pi ~ Dirichlet(alpha)
-    - Each lambda_k ~ Gamma(a_k, b_k)
-    - Hyperparameters (alpha, a_k, b_k) are updated using an empirical Bayes
-      procedure that solves for the Gamma(a, b) distribution whose mean (a/b)
-      and variance (a/b^2) equal the empirical mean and variance of the current
-      lambda estimates.
+    Mixture weights, pi, follow a Dirichlet distribution with parameter, alpha.
+    Each lambda_k follows a Gamma distribution with shape, a_k, and rate, b_k.
+    The hyperparameters alpha, a_k, and b_k are updated using an empirical
+    Bayes procedure that solves for the Gamma distribution whose mean and
+    variance match the empirical mean and variance of the current lambda
+    estimates.
 
     EM algorithm
     
-    E‑step:
+    E step:
         Compute gamma[i, k], the posterior probability that prey i belongs to
-        component k, using the posterior log‑likelihood for each component and
-        a per‑prey normalizing constant.
+        component k, using the posterior log likelihood for each component and
+        a per prey normalizing constant.
 
-    M‑step:
-        Update lambda1, lambda2, lambda3, and pi by maximizing the expected 
-        posterior objective: a weighted combination of the Poisson likelihood 
-        terms (weighted by γ) and the contributions from the Dirichlet prior on 
-        π and the Gamma (hierarchical) priors on the λ parameters.
+    M step:
+        Update lambda1, lambda2, lambda3, and pi by maximizing the expected
+        posterior objective, which combines the Poisson likelihood terms
+        weighted by gamma and the contributions from the Dirichlet prior on pi
+        and the Gamma priors on the lambda parameters.
 
     Returns
     
@@ -80,18 +80,68 @@ def run_em_hierarchical(
         alpha_history
         a_history, b_history
         lambda1, lambda2, lambda3, tau, pi, gamma
-        
+
+    Parameters
+    
+    X : array
+        Data matrix for the current bait with shape n × r.
+    hyperparams : dict
+        Optional hyperparameters for the hierarchical EM model. Users may
+        supply overrides but defaults are constructed internally for any
+        missing entries. The tau value is read from this dictionary and may
+        be overridden by the tau grid search.
+    biological_bait : str
+        Identifier for the current bait.
+    max_iter : int
+        Maximum number of EM iterations.
+    tol_loglik : float
+        Convergence tolerance for changes in the log likelihood.
+    tol_params : float
+        Convergence tolerance for changes in the parameter estimates.
+    seed : int
+        Random seed used for initialization.
+    verbose : bool
+        If True, print progress information during EM.
+
+    Model parameters
+    
+    The model parameters are lambda1, lambda2, lambda3, pi, and gamma. These
+    are estimated by the EM algorithm and are not supplied by the user.
+
     Hyperparameters
     
-    The function accepts a hyperparameter dictionary. Users may supply values
-    but are not required to. Any missing entries are filled with internal
-    defaults, including the lambda initializations and the alpha parameters.
-    The tau entry may be supplied directly or overridden by the tau grid
-    search. All other hyperparameters remain unchanged unless explicitly
-    provided
-    """
+    The hyperparameters are alpha, a_k, b_k, and tau. Users may supply values
+    in the hyperparameter dictionary but are not required to. Any missing
+    entries are filled with internal defaults, including the lambda
+    initializations and the alpha parameters. The tau entry may be supplied
+    directly or overridden by the tau grid search. All other hyperparameters
+    remain unchanged unless explicitly provided.
 
-    # %% Initialization and set-up
+    Control parameters
+    
+    The control parameters max_iter, tol_loglik, tol_params, seed, and verbose
+    govern the convergence behavior and reproducibility of the EM algorithm.
+    These are not part of the hyperparameter dictionary.
+    """
+   # %% Initialization and set-up
+    if hyperparams is None:
+        hyperparams = {}
+    
+        # Dirichlet prior (alpha = 2 for each component)
+        hyperparams.setdefault("alpha1", 2.0)
+        hyperparams.setdefault("alpha2", 2.0)
+        hyperparams.setdefault("alpha3", 2.0)
+        
+        # Mixing proportions initialization (uniform)
+        hyperparams.setdefault("pi_init", np.ones(3, dtype=float) / 3.0)
+        
+        # Global shrinkage parameter
+        hyperparams.setdefault("tau", 1.0)
+        
+        # Tau grid (same scale as classical grid)
+        hyperparams.setdefault("tau_grid", [0.1, 0.5, 1.0, 2.0])
+    
+    
     np.random.seed(seed)
 
     # Dimensions
@@ -288,22 +338,23 @@ def run_em_hierarchical(
         lambda3 = lambda3_new
         pi = pi_new
 
-# %% Final output
+
+    # %% Final output
     return {
-        "loglik_history": loglik_history,
-        "lambda1_history": lambda1_history,
-        "lambda2_history": lambda2_history,
-        "lambda3_history": lambda3_history,
-        "tau_history": tau_history,
-        "pi_history": pi_history,
-        "gamma_history": gamma_history,
-        "alpha_history": alpha_history,
-        "a_history": a_history,
-        "b_history": b_history,
-        "lambda1": lambda1,
-        "lambda2": lambda2,
-        "lambda3": lambda3,
-        "tau": tau,
-        "pi": pi,
-        "gamma": gamma
-    }
+    "loglik_history": loglik_history,
+    "lambda1_history": lambda1_history,
+    "lambda2_history": lambda2_history,
+    "lambda3_history": lambda3_history,
+    "tau_history": tau_history,
+    "pi_history": pi_history,
+    "gamma_history": gamma_history,
+    "alpha_history": alpha_history,
+    "a_history": a_history,
+    "b_history": b_history,
+    "lambda1": lambda1,
+    "lambda2": lambda2,
+    "lambda3": lambda3,
+    "tau": tau,
+    "pi": pi,
+    "gamma": gamma
+}
