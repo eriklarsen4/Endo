@@ -1,112 +1,82 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Feb 21 12:07:19 2026
+Created on Wed Mar  4 09:01:26 2026
 
 @author: Erik
 """
-
-# %% Imports
+# %% Import
 import numpy as np
 import pandas as pd
 
 from saint.pipeline.classical_saint import run_classical_pipeline
 
-
-# %% Tests
-
-def test_classical_pipeline_runs_and_returns_expected_structure():
+# %% Test
+def test_classical_pipeline_basic_structure():
     # Minimal synthetic wide-format input
-    input_data = pd.DataFrame({
-        "Protein": ["P1", "P2"],
-        "condA_B1_1": [5, 1],
-        "condA_B1_2": [3, 0],
-        "condA_CTRL_1": [2, 0],
-        "condA_CTRL_2": [1, 1],
-    })
-
-    bait_names = ["B1"]
-
-    metadata = {
-        "biological_bait_names": {"B1": "BAIT1"},
-        "AN": {"B1": "AN1"},
-        "MW": {"B1": 50.0},
-    }
+    input_data = pd.DataFrame(
+        {
+            "Protein": ["P1", "P2"],
+            "condA_B1_1": [5, 1],
+            "condA_B1_2": [3, 0],
+            "condA_CTRL_1": [2, 0],
+            "condA_CTRL_2": [1, 1],
+        }
+    )
 
     results = run_classical_pipeline(
-        input_data,
-        bait_names,
-        metadata,
+        input_data=input_data,
         max_iter=5,
         seed=1,
         make_plots=False,
     )
 
-    # Top-level keys
+    # Top-level structure
     assert set(results.keys()) == {"raw_outputs", "metadata", "results_df"}
-
-    # Metadata object (typed)
-    meta = results["metadata"]
-    assert hasattr(meta, "user_provided_fields")
-    assert hasattr(meta, "inferred_fields")
-    assert hasattr(meta, "pipeline_derived_fields")
-
-    # Pipeline-derived fields
-    pdf = meta.pipeline_derived_fields
-    assert pdf.bait_names == bait_names
-    assert isinstance(pdf.hyperparameters, dict)
-    assert pdf.tau_grid == []  # classical pipeline has no tau grid
-    assert isinstance(pdf.convergence, dict)
-    assert isinstance(pdf.iteration_counts, dict)
 
     # Raw outputs structure
     raw = results["raw_outputs"]
-    assert set(raw.keys()) == {"em_results", "tau_info"}
+    assert "em_results" in raw
+    assert "tau_info" in raw
 
-    # EM results must contain the bait
-    assert "B1" in raw["em_results"]
+    # tau_info must be dict of empty dicts (classical has no tau grid)
+    assert isinstance(raw["tau_info"], dict)
+    for v in raw["tau_info"].values():
+        assert v == {}
 
-    em = raw["em_results"]["B1"]
+    # Metadata structure
+    meta = results["metadata"]
+    assert hasattr(meta, "inferred_fields")
+    assert hasattr(meta.inferred_fields, "baits")
+    assert hasattr(meta.inferred_fields, "proteins_by_bait")
+    assert hasattr(meta.inferred_fields, "control_baits")
+    assert hasattr(meta.inferred_fields, "treatment_baits")
 
-    # EM histories and final values must exist
-    for key in [
-        "loglik_history",
-        "lambda1_history",
-        "lambda2_history",
-        "pi_history",
-        "gamma_history",
-        "lambda1",
-        "lambda2",
-        "pi",
-        "gamma",
-        "convergence_info",
-        "iteration_count",
-    ]:
-        assert key in em
-
-    # Results dataframe
+    # Results table
     df = results["results_df"]
     assert isinstance(df, pd.DataFrame)
+    assert not df.empty
 
+    # Required columns (2-component classical model)
     expected_cols = {
         "Protein",
         "bait",
         "lambda1",
         "lambda2",
-        "lambda3",
-        "tau",
         "pi1",
         "pi2",
-        "pi3",
         "gamma1",
         "gamma2",
-        "gamma3",
     }
     assert expected_cols.issubset(df.columns)
 
-    # Sorting check: Protein ascending, gamma3 descending
+    # No third-component columns
+    forbidden_cols = {"lambda3", "pi3", "gamma3", "tau"}
+    assert forbidden_cols.isdisjoint(df.columns)
+
+    # Sorting rule: gamma2 desc, then Protein asc
     df_sorted = df.sort_values(
-        by=["Protein", "gamma3"],
-        ascending=[True, False],
+        by=["gamma2", "Protein"],
+        ascending=[False, True],
         ignore_index=True,
     )
     assert df.equals(df_sorted)

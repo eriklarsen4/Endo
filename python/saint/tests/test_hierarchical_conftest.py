@@ -1,22 +1,49 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Mar  3 18:36:16 2026
+Created on Wed Mar  4 08:34:21 2026
 
 @author: Erik
 """
-
-import numpy as np
-import pandas as pd
+# %% Import
 import pytest
+import pandas as pd
+
+from saint.pipeline.hierarchical_saint import run_hierarchical_pipeline
+
+# %% fixtures
+@pytest.fixture
+def minimal_input_data():
+    return pd.DataFrame(
+        {
+            "Protein": ["P1", "P2"],
+            "condA_B1_1": [5, 1],
+            "condA_B1_2": [3, 0],
+            "condA_CTRL_1": [2, 0],
+            "condA_CTRL_2": [1, 1],
+        }
+    )
 
 
 @pytest.fixture
-def minimal_input_data():
-    # Two baits, 5 proteins each, 2 replicates
-    data = {
-        "bait": ["B1"] * 10 + ["B2"] * 10,
-        "prey": [f"P{i}" for i in range(1, 11)] * 2,
-        "rep1": np.random.poisson(5, 20),
-        "rep2": np.random.poisson(5, 20),
-    }
-    return pd.DataFrame(data)
+def hierarchical_results(minimal_input_data):
+    return run_hierarchical_pipeline(
+        input_data=minimal_input_data,
+        max_iter=5,
+        seed=1,
+        make_plots=False,
+    )
+
+
+@pytest.fixture
+def hierarchical_metadata(hierarchical_results):
+    return hierarchical_results["metadata"]
+
+
+@pytest.fixture
+def hierarchical_raw(hierarchical_results):
+    return hierarchical_results["raw_outputs"]
+
+
+@pytest.fixture
+def hierarchical_df(hierarchical_results):
+    return hierarchical_results["results_df"]

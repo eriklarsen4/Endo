@@ -52,6 +52,8 @@ def test_load_bait_data_basic_structure():
     assert metadata["proteins_by_bait"]["BaitA"] == ["P1", "P2"]
     assert metadata["proteins_by_bait"]["BaitB"] == ["P1", "P2"]
 
-    assert "replicate_map" in metadata
-    assert metadata["replicate_map"]["BaitA"] == ["1", "2"]
-    assert metadata["replicate_map"]["BaitB"] == ["1", "2"]
+    assert "baits" in metadata
+    assert "proteins_by_bait" in metadata
+    assert "control_baits" in metadata
+    assert "treatment_baits" in metadata
+

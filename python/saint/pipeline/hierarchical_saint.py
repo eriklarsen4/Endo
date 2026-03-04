@@ -36,6 +36,8 @@ def run_hierarchical_pipeline(
     show_plots=True,
     save_plots=False,
     plot_dir=None,
+    save_results=False,
+    results_csv=None,
 ):
     """
     Run the hierarchical SAINT pipeline for all baits using a per-bait tau grid
@@ -303,5 +305,8 @@ def run_hierarchical_pipeline(
         "metadata": metadata,
         "results_df": results_df,
     }
+    
+    if save_results and results_csv is not None:
+        results_df.to_csv(results_csv, index=False)
     
     return output

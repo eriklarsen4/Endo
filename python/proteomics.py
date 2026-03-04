@@ -138,7 +138,10 @@ results_classical = run_classical_pipeline(
 # %% Run hierarchical SAINT
 results_hierarchical = run_hierarchical_pipeline(
     input_data=data,
-    make_plots=True
+    make_plots=True,
+    plot_dir='C:/Users/Erik/Desktop/Programming/R/Bio/Endo/python/saint/results',
+    save_results=True,
+    results_csv='C:/Users/Erik/Desktop/Programming/R/Bio/Endo/python/saint/results/hierarchical_results.csv'
 )
 
 # %%
@@ -213,12 +216,37 @@ import os
 fig.savefig("C:/Users/Erik/Desktop/Programming/R/Bio/Endo/analysis/modeling/pre_tuned_gamma3_density.png", dpi=300, bbox_inches="tight")
 fig.savefig("C:/Users/Erik/Desktop/Programming/R/Bio/Endo/analysis/modeling/pre_tuned_gamma3_density.pdf", bbox_inches="tight")
 
+# %% Compute principled FDR-based cutoff for gamma3_avg
+
+import numpy as np
+import pandas as pd
+
+df = results_hierarchical["results_df"]
+
+gamma3_v5 = df[df["bait"] == "TMEMV5"][["Protein", "gamma3"]].rename(columns={"gamma3": "gamma3_v5"})
+gamma3_myc = df[df["bait"] == "TMEMmyc"][["Protein", "gamma3"]].rename(columns={"gamma3": "gamma3_myc"})
+
+merged = gamma3_v5.merge(gamma3_myc, on="Protein", how="inner")
+merged["gamma3_avg"] = (merged["gamma3_v5"] + merged["gamma3_myc"]) / 2.0
+
+# Sort by gamma3_avg descending
+merged = merged.sort_values("gamma3_avg", ascending=False).reset_index(drop=True)
+
+# Compute FDR curve
+merged["FDR"] = (1 - merged["gamma3_avg"]).cumsum() / (np.arange(len(merged)) + 1)
+
+# Choose cutoff at FDR <= 0.05
+alpha = 0.05
+cutoff_gamma3 = merged.loc[merged["FDR"] <= alpha, "gamma3_avg"].min()
+
+cutoff_gamma3
 
 # %% Ranked interactome table (cleaned, sorted, gamma3-based, no lambdas)
 
 import pandas as pd
 
-df = results["results_df"].copy()
+
+df = results_hierarchical["results_df"].copy()
 
 # Remove unwanted columns if present
 cols_to_drop = [
@@ -238,12 +266,12 @@ df = df.merge(
 df["rank"] = df["gamma3_avg"].rank(method="dense", ascending=False).astype(int)
 
 # Sort by rank, then by protein, then by bait
-df = df.sort_values(["rank", "Protein", "Bait"])
+df = df.sort_values(["rank", "Protein", "bait"])
 
 # Reorder columns for clarity
 ordered_cols = (
-    ["rank", "Protein", "Bait"] +
-    [c for c in df.columns if c not in ["rank", "Protein", "Bait"]]
+    ["rank", "Protein", "bait"] +
+    [c for c in df.columns if c not in ["rank", "Protein", "bait"]]
 )
 df = df[ordered_cols]
 
@@ -276,30 +304,6 @@ ranked_interactome = df.reset_index(drop=True)
 # plt.tight_layout()
 # plt.show()
 
-# %% Compute principled FDR-based cutoff for gamma3_avg
-
-import numpy as np
-import pandas as pd
-
-df = results["results_df"]
-
-gamma3_v5 = df[df["Bait"] == "TMEMV5"][["Protein", "gamma3"]].rename(columns={"gamma3": "gamma3_v5"})
-gamma3_myc = df[df["Bait"] == "TMEMmyc"][["Protein", "gamma3"]].rename(columns={"gamma3": "gamma3_myc"})
-
-merged = gamma3_v5.merge(gamma3_myc, on="Protein", how="inner")
-merged["gamma3_avg"] = (merged["gamma3_v5"] + merged["gamma3_myc"]) / 2.0
-
-# Sort by gamma3_avg descending
-merged = merged.sort_values("gamma3_avg", ascending=False).reset_index(drop=True)
-
-# Compute FDR curve
-merged["FDR"] = (1 - merged["gamma3_avg"]).cumsum() / (np.arange(len(merged)) + 1)
-
-# Choose cutoff at FDR <= 0.05
-alpha = 0.05
-cutoff_gamma3 = merged.loc[merged["FDR"] <= alpha, "gamma3_avg"].min()
-
-cutoff_gamma3
 
 # %% Horizontal boxplots for proteins above the gamma3 cutoff
 
@@ -359,10 +363,10 @@ if "TMEM184B" in merged["Protein"].dropna().values:
     hits = pd.concat([tmem_row, hits]).drop_duplicates(subset=["Protein"])
 
 # Extract raw counts
-df_raw = results["results_df"][["Protein", "Bait", "rep1", "rep2"]]
+df_raw = results_hierarchical["results_df"][["Protein", "bait", "rep1", "rep2"]]
 
 # Pivot to get 4 raw values per protein
-pivot = df_raw.pivot_table(index="Protein", columns="Bait", values=["rep1", "rep2"])
+pivot = df_raw.pivot_table(index="Protein", columns="bait", values=["rep1", "rep2"])
 pivot.columns = [f"{rep}_{bait}" for rep, bait in pivot.columns]
 
 # Merge with hits

@@ -1,72 +1,59 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Feb 19 15:57:43 2026
+Created on Wed Mar  4 08:59:20 2026
 
 @author: Erik
 """
 
-# %% Imports
+# %%Import
 import numpy as np
 from saint.model.classical_em_wrapper import run_em_classical
 
+# %% Test
+def test_run_em_classical_basic():
+    # Simple synthetic counts
+    X = np.array([5, 0, 3, 1], dtype=float)
 
-# %% Tests
-
-def test_em_runs_and_returns_expected_keys():
-    # X_sum must be a 1D vector because run_em_classical collapses counts
-    X_sum = np.array([5.0, 3.0])
-
-    hyperparams = {
-        "lambda1_init": np.array([1.0, 1.0]),
-        "lambda2_init": np.array([2.0, 2.0]),
-        "pi_init": np.array([0.7, 0.3]),
-        "alpha": np.array([2.0, 2.0]),   # unused but harmless
+    hyper = {
+        "lambda1_init": np.array([1.0, 1.0, 1.0, 1.0]),
+        "lambda2_init": np.array([3.0, 3.0, 3.0, 3.0]),
+        "pi_init": np.array([0.6, 0.4]),
     }
 
     results = run_em_classical(
-        X_sum,
-        hyperparams,
-        "BAIT",
-        max_iter=5,
+        X,
+        hyper,
+        bait_name="B1",
+        max_iter=10,
+        tol_loglik=1e-6,
+        tol_params=1e-6,
         seed=1,
+        verbose=False,
     )
 
-    expected_keys = {
-        "loglik_history",
-        "lambda1_history",
-        "lambda2_history",
-        "pi_history",
-        "gamma_history",
+    # Required keys
+    assert set(results.keys()) >= {
         "lambda1",
         "lambda2",
         "pi",
         "gamma",
+        "loglik_history",
         "convergence_info",
         "iteration_count",
     }
 
-    assert expected_keys.issubset(results.keys())
+    # Shapes
+    assert results["lambda1"].shape == X.shape
+    assert results["lambda2"].shape == X.shape
+    assert results["gamma"].shape == (len(X), 2)
 
+    # pi must be length 2
+    assert results["pi"].shape == (2,)
 
-def test_em_loglik_increases_or_stabilizes():
-    X_sum = np.array([4.0, 4.0])
+    # gamma rows must sum to 1
+    row_sums = results["gamma"].sum(axis=1)
+    assert np.allclose(row_sums, 1.0, atol=1e-6)
 
-    hyperparams = {
-        "lambda1_init": np.array([1.0, 1.0]),
-        "lambda2_init": np.array([3.0, 3.0]),
-        "pi_init": np.array([0.5, 0.5]),
-        "alpha": np.array([2.0, 2.0]),
-    }
-
-    results = run_em_classical(
-        X_sum,
-        hyperparams,
-        "BAIT",
-        max_iter=10,
-        seed=0,
-    )
-
-    loglik = results["loglik_history"]
-
-    # EM log-likelihood must be non-decreasing
-    assert all(loglik[i] <= loglik[i+1] + 1e-8 for i in range(len(loglik) - 1))
+    # loglik must be monotone non-decreasing
+    ll = results["loglik_history"]
+    assert all(ll[i] <= ll[i + 1] for i in range(len(ll) - 1))

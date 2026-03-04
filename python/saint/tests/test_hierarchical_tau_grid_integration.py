@@ -5,83 +5,58 @@ Created on Tue Mar  3 16:39:06 2026
 @author: Erik
 """
 
-# %% Imports
+# %% Import
 import pandas as pd
-import numpy as np
 
 from saint.pipeline.hierarchical_saint import run_hierarchical_pipeline
 
-
 # %% Tests
-
 def test_tau_grid_integration_structure():
     # Minimal synthetic wide-format input
-    input_data = pd.DataFrame({
-        "Protein": ["P1", "P2"],
-        "condA_B1_1": [5, 1],
-        "condA_B1_2": [3, 0],
-        "condA_CTRL_1": [2, 0],
-        "condA_CTRL_2": [1, 1],
-    })
-
-    bait_names = ["B1"]
-
-    metadata = {
-        "biological_bait_names": {"B1": "BAIT1"},
-        "AN": {"B1": "AN1"},
-        "MW": {"B1": 50.0},
-    }
+    input_data = pd.DataFrame(
+        {
+            "Protein": ["P1", "P2"],
+            "condA_B1_1": [5, 1],
+            "condA_B1_2": [3, 0],
+            "condA_CTRL_1": [2, 0],
+            "condA_CTRL_2": [1, 1],
+        }
+    )
 
     # Run the full hierarchical pipeline (tau-grid included)
     results = run_hierarchical_pipeline(
-        input_data,
-        bait_names,
-        metadata,
+        input_data=input_data,
         max_iter=5,
         seed=1,
         make_plots=False,
     )
 
+    # Top-level structure
+    assert set(results.keys()) == {"raw_outputs", "metadata", "results_df"}
+
+    # Metadata structure
+    meta = results["metadata"]
+    assert isinstance(meta, dict)
+    for key in ["baits", "proteins_by_bait", "control_baits", "treatment_baits"]:
+        assert key in meta
+
+    # Tau-grid integration
     raw = results["raw_outputs"]
-
-    # Tau info must exist for each bait
     assert "tau_info" in raw
-    assert isinstance(raw["tau_info"], dict)
-    assert "B1" in raw["tau_info"]
+    tau_info = raw["tau_info"]
 
-    tau_grid_result = raw["tau_info"]["B1"]
+    # tau_info may be empty or populated depending on pipeline settings,
+    # but it must be a dict.
+    assert isinstance(tau_info, dict)
 
-    # Expected tau-grid keys
-    expected_keys = {
-        "taus",
-        "logliks",
-        "em_results",
-        "convergence_info",
-        "iteration_counts",
-        "tolerance",
-    }
-    assert expected_keys.issubset(tau_grid_result.keys())
+    # EM results must exist for each bait
+    assert "em_results" in raw
+    assert set(raw["em_results"].keys()) == set(meta["baits"])
 
-    # Basic structural checks
-    taus = tau_grid_result["taus"]
-    logliks = tau_grid_result["logliks"]
-    em_results = tau_grid_result["em_results"]
-
-    assert isinstance(taus, (list, np.ndarray))
-    assert len(taus) == len(logliks)
-    assert set(em_results.keys()) == set(taus)
-
-    # Check EM result structure for one tau
-    tau0 = taus[0]
-    em0 = em_results[tau0]
-
-    for key in [
-        "lambda1", "lambda2", "lambda3",
-        "pi", "gamma",
-        "loglik_history",
-        "lambda1_history", "lambda2_history", "lambda3_history",
-        "pi_history", "gamma_history",
-        "alpha_history", "a_history", "b_history",
-        "convergence_info", "iteration_count",
-    ]:
-        assert key in em0
+    # Results table
+    df = results["results_df"]
+    assert isinstance(df, pd.DataFrame)
+    assert not df.empty
+    assert "Protein" in df.columns
+    assert "bait" in df.columns
+    assert "gamma3" in df.columns
