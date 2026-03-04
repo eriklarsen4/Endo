@@ -4,3 +4,9 @@
 .Ruserdata
 inst/doc
 Endo/python/proteomics.py
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd

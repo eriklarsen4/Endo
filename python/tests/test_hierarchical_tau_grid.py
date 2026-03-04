@@ -45,12 +45,13 @@ def test_tau_grid_runs_and_returns_expected_keys():
     assert expected_keys.issubset(results.keys())
 
     # Structural checks
-    #assert list(results["taus"]) == tau_values
-    #assert len(results["logliks"]) == len(tau_values)
-    #assert set(results["em_results"].keys()) == set(tau_values)
+    assert isinstance(results["best_tau"], float)
+    assert isinstance(results["best_result"], dict)
+    assert isinstance(results["tau_grid_results"], dict)
+    assert set(results["tau_grid_results"].keys()) == set(results["tau_grid"])
 
     # EM result structure sanity check
-    em0 = results["em_results"][tau_values[0]]
+    em0 = results["best_result"]
     assert "lambda1" in em0
     assert "lambda2" in em0
     assert "lambda3" in em0

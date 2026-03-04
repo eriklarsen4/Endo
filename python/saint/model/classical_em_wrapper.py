@@ -103,7 +103,7 @@ def run_em_classical(
                 
     Parameters
 
-    X_sum : array of shape (n,)
+    X : array of shape (n,)
         Collapsed spectral counts for n prey proteins for this bait.
 
     hyperparams : dict
@@ -157,7 +157,7 @@ def run_em_classical(
     np.random.seed(seed)
 
     # Number of prey proteins for this bait
-    n = X_sum.shape[0]
+    n = X.shape[0]
 
     # Initialize Poisson rate parameters for the two mixture components
     # Component 1 (index 0): background / non-interactor
