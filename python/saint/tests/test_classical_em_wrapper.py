@@ -23,7 +23,6 @@ def test_run_em_classical_basic():
     results = run_em_classical(
         X,
         hyper,
-        bait_name="B1",
         max_iter=10,
         tol_loglik=1e-6,
         tol_params=1e-6,

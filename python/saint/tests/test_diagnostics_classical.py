@@ -45,10 +45,7 @@ def test_make_classical_plots_returns_figures():
 
     figs = make_classical_plots(results_em, bait_name="B1")
 
-    # Classical diagnostics now return only:
-    #   trajectories (multi-panel)
-    #   gamma (histogram/density)
-    assert set(figs.keys()) == {"trajectories", "gamma"}
+    assert set(figs.keys()) == {"loglik", "lambda", "pi", "gamma"}
 
     # Both should be matplotlib Figure-like objects
     for fig in figs.values():

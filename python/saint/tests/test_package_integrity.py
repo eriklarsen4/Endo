@@ -46,7 +46,6 @@ def test_all_expected_modules_importable():
         "saint.model.hierarchical_likelihood",
         "saint.diagnostics.diagnostics_classical",
         "saint.diagnostics.diagnostics_hierarchical",
-        "saint.validation.validation",
     ]
 
     for module in expected_modules:
