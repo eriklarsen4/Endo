@@ -1,11 +1,8 @@
 
-```markdown
 # SAINT (Python)
 
 Statistical Analysis of Interactomes with Explicit, Reproducible EM Models.  
 A modular, research‑grade Python implementation of classical and hierarchical EM models for AP‑MS data, with tau‑grid tuning, diagnostics, and a fully explicit architecture.
-
----
 
 ## Package Structure
 
