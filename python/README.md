@@ -72,10 +72,9 @@ saint/
     validation/
         validate_hyperparams.py
         __init__.py
-```text
+```
 
 </details>
-```markdown
 
 ## Classical Model
 
@@ -114,9 +113,7 @@ All intermediate variables use explicit, component-indexed names for clarity and
 - parameter trajectory plots via parameter_trajectories.py  
 
 </details>
-```markdown
 
-```markdown
 ## Hierarchical Model
 
 <details>
@@ -165,9 +162,7 @@ The global shrinkage strength is controlled by:
 These outputs help assess whether the hierarchical model is stable, well-calibrated, and biologically interpretable.
 
 </details>
-```markdown
 
-```markdown
 ## Tau-grid Tuning
 
 <details>
@@ -203,9 +198,7 @@ Choosing tau affects:
 These diagnostics help determine whether the model is under-shrunk, over-shrunk, or well-calibrated.
 
 </details>
-```markdown
 
-```markdown
 ## Diagnostics Suite
 
 <details>
@@ -273,9 +266,7 @@ All diagnostics follow the same architectural principles:
 This ensures that every diagnostic figure or table is interpretable by collaborators and future maintainers.
 
 </details>
-```markdown
 
-```markdown
 ## Naming Conventions
 
 <details>
@@ -332,9 +323,7 @@ This architecture ensures that:
 - the package remains stable as new models or diagnostics are added  
 
 </details>
-```markdown
 
-```markdown
 ## Workflow and Usage
 
 <details>
@@ -402,9 +391,6 @@ The data_input.py module includes helper functions for:
 - preparing data for classical or hierarchical models  
 
 </details>
-```markdown
-
-```markdown
 ## Development Status
 
 <details>
@@ -473,4 +459,3 @@ Contributors should follow the existing structure and naming discipline to maint
 This project is distributed under an open-source license. See the top-level repository for details.
 
 </details>
-```markdown
