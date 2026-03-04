@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Mar  1 16:04:18 2026
-
-@author: Erik
-"""
 
 ```markdown
 # SAINT (Python)
