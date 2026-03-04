@@ -13,7 +13,7 @@ import numpy as np
 # %% Classical EM wrapper
 
 def run_em_classical(
-    X_sum,
+    X,
     hyperparams,
     *,
     max_iter=200,

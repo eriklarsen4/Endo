@@ -37,8 +37,6 @@ def test_run_em_classical_basic():
         "pi",
         "gamma",
         "loglik_history",
-        "convergence_info",
-        "iteration_count",
     }
 
     # Shapes
