@@ -15,7 +15,6 @@ from saint.model.hierarchical_em_wrapper import run_em_hierarchical
 def test_em_hierarchical_runs_and_returns_expected_keys():
     X = np.array([[5, 3], [1, 0]])
 
-    # Only include hyperparameters actually used by the wrapper
     hyperparams = {
         "lambda1_init": np.array([1.0, 1.0]),
         "lambda2_init": np.array([2.0, 2.0]),
@@ -36,7 +35,6 @@ def test_em_hierarchical_runs_and_returns_expected_keys():
         "lambda1_history",
         "lambda2_history",
         "lambda3_history",
-        "tau_history",
         "pi_history",
         "gamma_history",
         "alpha_history",

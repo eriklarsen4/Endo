@@ -68,6 +68,8 @@ data['Protein'] = data['Protein'].str.extract(r'GN=([^ ]+)', expand = False)
 # extract kDas out of MW column and convert to numeric
 data['MW'] = pd.to_numeric(data['MW'].str.extract(r'(\d+)\s+kDa', expand = False))
 
+data = data.dropna(subset=['Protein'])
+
 # %%
 
 # re-formatting the input to harmonize with the algorithm's requirements
@@ -130,16 +132,12 @@ metadata = {
 
 results_classical = run_classical_pipeline(
     input_data=data,
-    bait_names=['TMEMV5', 'TMEMmyc'],
-    metadata=metadata,
     make_plots=True
     )
 
 # %% Run hierarchical SAINT
 results_hierarchical = run_hierarchical_pipeline(
     input_data=data,
-    bait_names=["TMEMV5", "TMEMmyc"],
-    metadata=metadata,
     make_plots=True
 )
 

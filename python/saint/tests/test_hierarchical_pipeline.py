@@ -45,33 +45,33 @@ def test_hierarchical_pipeline_runs_and_returns_expected_structure():
         seed=1,
         make_plots=False,
     )
-
+    
     # Top-level keys
     assert set(results.keys()) == {"raw_outputs", "metadata", "results_df"}
-
+    
     # Metadata is a typed object
     meta = results["metadata"]
     assert isinstance(meta, HierarchicalMetadata)
     assert isinstance(meta.user_provided_fields, UserProvidedFields)
     assert isinstance(meta.inferred_fields, InferredFields)
     assert isinstance(meta.pipeline_derived_fields, PipelineDerivedFields)
-
+    
     # Inferred fields must contain baits and proteins_by_bait
     assert len(meta.inferred_fields.baits) > 0
     assert isinstance(meta.inferred_fields.proteins_by_bait, dict)
-
+    
     # Pipeline-derived fields must contain bait_names
     assert meta.pipeline_derived_fields.bait_names == bait_names
-
+    
     # Raw outputs structure
     raw = results["raw_outputs"]
     assert "em_results" in raw
     assert "tau_info" in raw
-
+    
     # Results dataframe
     df = results["results_df"]
     assert isinstance(df, pd.DataFrame)
-
+    
     expected_cols = {
         "Protein", "bait",
         "lambda1", "lambda2", "lambda3",
@@ -80,7 +80,7 @@ def test_hierarchical_pipeline_runs_and_returns_expected_structure():
         "gamma1", "gamma2", "gamma3",
     }
     assert expected_cols.issubset(df.columns)
-
+    
     # Sorting check: Protein ascending, gamma3 descending
     df_sorted = df.sort_values(
         by=["Protein", "gamma3"],

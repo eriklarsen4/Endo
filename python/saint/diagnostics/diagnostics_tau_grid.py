@@ -12,25 +12,53 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+
 # %% Summaries
-def summarize_tau_grid(tau_grid_results):
+def summarize_tau_grid(tau_grid_result):
     """
     Summarize the results of the tau grid search for a single bait.
-    Returns a DataFrame with one row per tau value.
+
+    Parameters
+    
+    tau_grid_result : dict
+        Output from run_tau_grid, containing:
+            - "taus" : list or array of evaluated tau values (sorted)
+            - "logliks" : list or array of final log-likelihoods
+            - "em_results" : dict mapping tau → EM result dict
+              where each EM result contains:
+                  lambda1, lambda2, lambda3 : arrays (n,)
+                  pi : array (3,)
+                  gamma : array (n, 3)
+
+    Returns
+    
+    DataFrame
+        One row per tau value, with:
+            tau, loglik,
+            lambda1_mean, lambda2_mean, lambda3_mean,
+            pi1, pi2, pi3,
+            mean_gamma3
     """
+
+    taus = np.array(tau_grid_result["taus"], dtype=float)
+    logliks = np.array(tau_grid_result["logliks"], dtype=float)
+    em_results = tau_grid_result["em_results"]
+
     rows = []
 
-    for tau, res in tau_grid_results.items():
+    for tau, loglik in zip(taus, logliks):
+        res = em_results[tau]
+
         lambda1 = res["lambda1"]
         lambda2 = res["lambda2"]
         lambda3 = res["lambda3"]
 
-        pi = res["pi"]              # shape (3,)
-        gamma = res["gamma"]        # shape (n, 3)
+        pi = res["pi"]          # shape (3,)
+        gamma = res["gamma"]    # shape (n, 3)
 
         rows.append({
-            "tau": tau,
-            "loglik": res["loglik_history"][-1],
+            "tau": float(tau),
+            "loglik": float(loglik),
             "lambda1_mean": float(np.mean(lambda1)),
             "lambda2_mean": float(np.mean(lambda2)),
             "lambda3_mean": float(np.mean(lambda3)),
@@ -47,7 +75,22 @@ def summarize_tau_grid(tau_grid_results):
 def plot_tau_grid(df, best_tau, bait_name):
     """
     Create diagnostic plots for the tau grid search for a single bait.
-    Returns a matplotlib Figure object.
+
+    Parameters
+    
+    df : DataFrame
+        Output of summarize_tau_grid, one row per tau.
+
+    best_tau : float
+        Tau value selected by the pipeline (near-optimal rule).
+
+    bait_name : str
+        Name of the bait for labeling.
+
+    Returns
+    
+    matplotlib.figure.Figure
+        Figure containing the 2×2 grid of diagnostics.
     """
 
     sns.set_style("whitegrid")
@@ -98,24 +141,37 @@ def plot_tau_grid(df, best_tau, bait_name):
 
 # %% High-level entry point
 
-def diagnostics_tau_grid(tau_info, bait_name):
+def diagnostics_tau_grid(tau_grid_result, bait_name, best_tau):
     """
     Produce tau grid diagnostics for a single bait.
-    Returns a dictionary containing:
-        - summary_df: DataFrame of tau grid results
-        - figure: matplotlib Figure object
-        - best_tau: the selected tau value
+
+    Parameters
+    
+    tau_grid_result : dict
+        Output from run_tau_grid for a single bait.
+
+    bait_name : str
+        Name of the bait.
+
+    best_tau : float
+        Tau value selected by the pipeline (near-optimal rule).
+
+    Returns
+    
+    dict
+        Dictionary containing:
+            - bait : bait name
+            - best_tau : selected tau value
+            - summary_df : DataFrame of tau grid results
+            - figure : matplotlib Figure object
     """
 
-    tau_grid_results = tau_info["tau_grid_results"]
-    best_tau = tau_info["best_tau"]
-
-    df = summarize_tau_grid(tau_grid_results)
+    df = summarize_tau_grid(tau_grid_result)
     fig = plot_tau_grid(df, best_tau, bait_name)
 
     return {
         "bait": bait_name,
         "best_tau": best_tau,
         "summary_df": df,
-        "figure": fig
+        "figure": fig,
     }

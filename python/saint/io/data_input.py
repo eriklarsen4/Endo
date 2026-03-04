@@ -11,7 +11,7 @@ import pandas as pd
 from pathlib import Path
 
 # %%
-def load_bait_data(input_obj):
+def load_bait_data(user_provided_df):
     """
     Load IPMS data and construct per-bait replicate matrices for the hierarchical
     SAINT pipeline. This function accepts either a wide-format DataFrame or a
@@ -26,8 +26,8 @@ def load_bait_data(input_obj):
 
     Parameters
     
-    input_obj : DataFrame or str
-        Raw APMS data in wide format (Protein column plus replicate columns
+    user_provided_df : DataFrame or str
+        Raw IPMS data in wide format (Protein name column plus replicate columns
         of the form <condition>_<bait>_<rep>), or a path to a .CSV file
         containing such a table.
 
@@ -58,17 +58,22 @@ def load_bait_data(input_obj):
     """
 
     # Case 1: user passed a DataFrame
-    if isinstance(input_obj, pd.DataFrame):
-        df = input_obj.copy()
+    if isinstance(user_provided_df, pd.DataFrame):
+        user_provided_df = user_provided_df.copy()
     else:
-        path = Path(input_obj)
+        path = Path(user_provided_df)
         if not path.exists():
-            raise FileNotFoundError(f"Input file not found: {input_obj}")
-        df = pd.read_csv(path)
+            raise FileNotFoundError(f"Input file not found: {user_provided_df}")
+        user_provided_df = pd.read_csv(path)
 
     # Convert wide → long
-    long_df = extract_bait_matrix(df)
-
+    long_df = extract_bait_matrix(user_provided_df)
+    
+    # Identify control vs treatment baits using exact match on Condition
+    control_mask = long_df["Condition"] == "Control"
+    control_baits = sorted(long_df.loc[control_mask, "Bait"].unique())
+    treatment_baits = sorted(long_df.loc[~control_mask, "Bait"].unique())
+    
     # Identify all baits
     bait_list = sorted(long_df["Bait"].unique())
 
@@ -85,12 +90,14 @@ def load_bait_data(input_obj):
         proteins_by_bait[bait] = df_b["Protein"].tolist()
 
         # Extract numeric replicate columns
-        numeric_cols = [c for c in df_b.columns if c not in ("Protein", "Bait")]
+        numeric_cols = [c for c in df_b.columns if c not in ("Protein", "Bait", "Condition")]
         X_by_bait[bait] = df_b[numeric_cols].astype(float).to_numpy()
 
     metadata = {
         "baits": bait_list,
         "proteins_by_bait": proteins_by_bait,
+        "control_baits": control_baits,
+        "treatment_baits": treatment_baits,
     }
 
     return bait_list, X_by_bait, metadata
@@ -98,9 +105,9 @@ def load_bait_data(input_obj):
 
 # %% Extract bait matrix (wide → long with replicate preservation)
 
-def extract_bait_matrix(df):
+def extract_bait_matrix(user_provided_df):
     """
-    Convert a wide-format APMS table into the long-format structure required by
+    Convert a wide-format IPMS table into the long-format structure required by
     the hierarchical SAINT pipeline. The input table must contain a Protein
     column and replicate measurement columns of the form:
 
@@ -118,7 +125,7 @@ def extract_bait_matrix(df):
 
     Parameters
     
-    df : DataFrame
+    user_provided_df : DataFrame
         Wide-format IPMS data containing a Protein column and replicate columns
         named according to the <condition>_<bait>_<rep> convention.
 
@@ -142,51 +149,57 @@ def extract_bait_matrix(df):
 
     """
 
-    protein = df["Protein"].tolist()
-    value_cols = [c for c in df.columns if c != "Protein"]
-
+    protein = user_provided_df["Protein"].tolist()
+    value_cols = [c for c in user_provided_df.columns if c != "Protein"]
+    
     parsed = {}
-
+    
     for col in value_cols:
         parts = col.split("_")
         if len(parts) < 3:
             continue
-
+    
         # NAMING SCHEME:
         # <condition>_<bait>_<rep>
+        condition = parts[0]
         bait_name = parts[1]
         rep_label = parts[2]
-
+    
         try:
             rep_index = int(rep_label)
         except ValueError:
             continue
-
-        counts = pd.to_numeric(df[col], errors="coerce").fillna(0).to_numpy()
-
+    
+        counts = pd.to_numeric(user_provided_df[col], errors="coerce").fillna(0).to_numpy()
+    
         if bait_name not in parsed:
-            parsed[bait_name] = {}
-
-        parsed[bait_name][rep_index] = counts
-
+            parsed[bait_name] = {
+                "condition": condition,
+                "reps": {}
+            }
+    
+        parsed[bait_name]["reps"][rep_index] = counts
+    
     # Build long-format dataframe
     records = []
-
-    for bait_name, rep_dict in parsed.items():
+    
+    for bait_name, info in parsed.items():
+        rep_dict = info["reps"]
+        condition = info["condition"]
         max_rep = max(rep_dict.keys())
-
+    
         for i, p in enumerate(protein):
             row = {
                 "Protein": p,
-                "Bait": bait_name
+                "Bait": bait_name,
+                "Condition": condition
             }
-
+    
             for r in range(1, max_rep + 1):
-                # Missing replicates → zeros
                 row[f"rep{r}"] = float(rep_dict.get(r, pd.Series([0]*len(protein)))[i])
-
+    
             records.append(row)
-
+    
     long_df = pd.DataFrame(records)
     return long_df
 
