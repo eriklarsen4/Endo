@@ -137,9 +137,8 @@ def run_classical_pipeline(
 
         # Run classical EM
         results_em = run_em_classical(
-            X_sum,
-            hyperparams_bait,
-            biological_bait,
+            X=X_sum,
+            hyperparams=hyperparams_bait,
             max_iter=max_iter,
             tol_loglik=tol_loglik,
             tol_params=tol_params,

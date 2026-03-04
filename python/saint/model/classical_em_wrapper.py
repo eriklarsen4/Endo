@@ -15,6 +15,7 @@ import numpy as np
 def run_em_classical(
     X_sum,
     hyperparams,
+    *,
     max_iter=200,
     tol_loglik=1e-6,
     tol_params=1e-6,

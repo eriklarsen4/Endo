@@ -31,8 +31,6 @@ def test_tau_grid_runs_and_returns_expected_keys():
         X=X,
         hyperparams=hyperparams,
         biological_bait="BAIT",
-        max_iter=5,
-        seed=1,
     )
 
     expected_keys = {
