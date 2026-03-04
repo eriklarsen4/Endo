@@ -29,9 +29,8 @@ def test_tau_grid_runs_and_returns_expected_keys():
 
     results = run_tau_grid(
         X=X,
-        tau_grid=tau_values,
         hyperparams=hyperparams,
-        bait_name="BAIT",
+        biological_bait="BAIT",
         max_iter=5,
         seed=1,
     )

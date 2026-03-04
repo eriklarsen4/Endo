@@ -15,7 +15,6 @@ import numpy as np
 def run_em_classical(
     X_sum,
     hyperparams,
-    biological_bait,
     max_iter=200,
     tol_loglik=1e-6,
     tol_params=1e-6,
@@ -116,9 +115,6 @@ def run_em_classical(
         Under the unified architecture, this dictionary may contain additional
         keys used by other pipelines (e.g., alpha1, alpha2, tau, tau_grid).
         The classical EM wrapper ignores keys it does not use.
-
-    biological_bait : str
-        Biological name of the bait used for labeling downstream results.
 
     max_iter : int
         Maximum number of EM iterations.

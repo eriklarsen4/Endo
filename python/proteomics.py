@@ -188,8 +188,8 @@ import matplotlib.pyplot as plt
 # Extract gamma3 values for each bait
 df = results_hierarchical["results_df"]
 
-gamma3_v5 = df[df["Bait"] == "TMEMV5"][["Protein", "gamma3"]].rename(columns={"gamma3": "gamma3_v5"})
-gamma3_myc = df[df["Bait"] == "TMEMmyc"][["Protein", "gamma3"]].rename(columns={"gamma3": "gamma3_myc"})
+gamma3_v5 = df[df["bait"] == "TMEMV5"][["Protein", "gamma3"]].rename(columns={"gamma3": "gamma3_v5"})
+gamma3_myc = df[df["bait"] == "TMEMmyc"][["Protein", "gamma3"]].rename(columns={"gamma3": "gamma3_myc"})
 
 # Merge and compute the average gamma3
 merged = gamma3_v5.merge(gamma3_myc, on="Protein", how="inner")
@@ -213,8 +213,11 @@ plt.show()
 
 import os
 
-fig.savefig("C:/Users/Erik/Desktop/Programming/R/Bio/Endo/analysis/modeling/pre_tuned_gamma3_density.png", dpi=300, bbox_inches="tight")
-fig.savefig("C:/Users/Erik/Desktop/Programming/R/Bio/Endo/analysis/modeling/pre_tuned_gamma3_density.pdf", bbox_inches="tight")
+#fig.savefig("C:/Users/Erik/Desktop/Programming/R/Bio/Endo/analysis/modeling/pre_tuned_gamma3_density.png", dpi=300, bbox_inches="tight")
+#fig.savefig("C:/Users/Erik/Desktop/Programming/R/Bio/Endo/analysis/modeling/pre_tuned_gamma3_density.pdf", bbox_inches="tight")
+
+fig.savefig("C:/Users/Erik/Desktop/Programming/R/Bio/Endo/analysis/modeling/tuned_gamma3_density.png", dpi=300, bbox_inches="tight")
+fig.savefig("C:/Users/Erik/Desktop/Programming/R/Bio/Endo/analysis/modeling/tuned_gamma3_density.pdf", bbox_inches="tight")
 
 # %% Compute principled FDR-based cutoff for gamma3_avg
 
@@ -278,7 +281,7 @@ df = df[ordered_cols]
 ranked_interactome = df.reset_index(drop=True)
 
 # If you want to save:
-# ranked_interactome.to_csv("ranked_interactome.csv", index=False)
+ranked_interactome.to_csv("C:/Users/Erik/Desktop/Programming/R/Bio/Endo/analysis/modeling/tuned_ranked_interactome.csv", index=False)
 
 # %% Candidate interactors
 
@@ -406,7 +409,7 @@ plt.show()
 import numpy as np
 import pandas as pd
 
-df = results["results_df"]
+df = results_hierarchical["results_df"]
 
 # Deduplicate lambdas: one row per protein
 lambda_df = (
@@ -471,7 +474,8 @@ plt.axhline(cutoff_gamma3, color="red", linestyle="--", linewidth=1)
 
 plt.xlabel("log2( (lambda1 + lambda2) / lambda3)\nSNR (Inverted Signal:Noise Ratio)")
 plt.ylabel("Average gamma3")
-plt.title("Pre-tuned Hierarchical EM SNR Volcano Plot")
+#plt.title("Pre-tuned Hierarchical EM SNR Volcano Plot")
+plt.title("Tuned Hierarchical EM SNR Volcano Plot")
 
 ax = plt.gca()
 
@@ -487,8 +491,11 @@ plt.tight_layout()
 plt.show()
 
 
-fig.savefig("C:/Users/Erik/Desktop/Programming/R/Bio/Endo/analysis/modeling/pre_tuned_SNR_volcano.png", dpi=300, bbox_inches="tight")
-fig.savefig("C:/Users/Erik/Desktop/Programming/R/Bio/Endo/analysis/modeling/pre_tuned_SNR_volcano.pdf", bbox_inches="tight")
+#fig.savefig("C:/Users/Erik/Desktop/Programming/R/Bio/Endo/analysis/modeling/pre_tuned_SNR_volcano.png", dpi=300, bbox_inches="tight")
+#fig.savefig("C:/Users/Erik/Desktop/Programming/R/Bio/Endo/analysis/modeling/pre_tuned_SNR_volcano.pdf", bbox_inches="tight")
+
+fig.savefig("C:/Users/Erik/Desktop/Programming/R/Bio/Endo/analysis/modeling/tuned_SNR_volcano.png", dpi=300, bbox_inches="tight")
+fig.savefig("C:/Users/Erik/Desktop/Programming/R/Bio/Endo/analysis/modeling/tuned_SNR_volcano.pdf", bbox_inches="tight")
 
 # %% Volcano with marginal histograms
 
@@ -593,7 +600,7 @@ sns.set_style("whitegrid")
 # -----------------------------
 # Volcano prep
 # -----------------------------
-df = results["results_df"]
+df = results_hierarchical["results_df"]
 
 lambda_df = (
     df[["Protein", "lambda1", "lambda2", "lambda3"]]
@@ -623,7 +630,7 @@ highlight = volcano[volcano["Protein"].isin(top_hits)]
 # -----------------------------
 # Heatmap prep (TMEM + top 25 + bottom 10)
 # -----------------------------
-df_raw = df[["Protein", "Bait", "rep1", "rep2"]]
+df_raw = df[["Protein", "bait", "rep1", "rep2"]]
 
 pivot = df_raw.pivot_table(index="Protein", columns="Bait", values=["rep1", "rep2"])
 pivot.columns = [f"{rep}_{bait}" for rep, bait in pivot.columns]
@@ -708,8 +715,8 @@ ax.xaxis.set_major_formatter(plt.FormatStrFormatter('%.2f'))
 
 ax.set_xlabel("log2( (lambda1 + lambda2) / lambda3)\nSNR (Inverted Signal:Noise Ratio)")
 ax.set_ylabel("Average gamma3")
-ax.set_title("Pre-tuned Hierarchical EM SNR Volcano Plot")
-
+#ax.set_title("Pre-tuned Hierarchical EM SNR Volcano Plot")
+ax.set_title("Tuned Hierarchical EM SNR Volcano Plot")
 
 
 # ---- Staggered Heatmap (right) ----
@@ -741,5 +748,8 @@ ax2.set_ylabel("Protein")
 plt.tight_layout()
 plt.show()
 
-fig.savefig("C:/Users/Erik/Desktop/Programming/R/Bio/Endo/analysis/modeling/pre_tuned_volcano_heatmap.png", dpi=300, bbox_inches="tight")
-fig.savefig("C:/Users/Erik/Desktop/Programming/R/Bio/Endo/analysis/modeling/pre_tuned_volcano_heatmap.pdf", bbox_inches="tight")
+#fig.savefig("C:/Users/Erik/Desktop/Programming/R/Bio/Endo/analysis/modeling/pre_tuned_volcano_heatmap.png", dpi=300, bbox_inches="tight")
+#fig.savefig("C:/Users/Erik/Desktop/Programming/R/Bio/Endo/analysis/modeling/pre_tuned_volcano_heatmap.pdf", bbox_inches="tight")
+
+fig.savefig("C:/Users/Erik/Desktop/Programming/R/Bio/Endo/analysis/modeling/tuned_volcano_heatmap.png", dpi=300, bbox_inches="tight")
+fig.savefig("C:/Users/Erik/Desktop/Programming/R/Bio/Endo/analysis/modeling/tuned_volcano_heatmap.pdf", bbox_inches="tight")

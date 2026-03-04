@@ -5,7 +5,6 @@ Created on Wed Mar  4 09:01:26 2026
 @author: Erik
 """
 # %% Import
-import numpy as np
 import pandas as pd
 
 from saint.pipeline.classical_saint import run_classical_pipeline

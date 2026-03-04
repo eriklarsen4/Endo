@@ -7,8 +7,6 @@ Created on Tue Mar  3 13:08:34 2026
 
 # %% Imports
 import numpy as np
-import pandas as pd
-
 
 # %% Hierarchical EM wrapper
 def run_em_hierarchical(

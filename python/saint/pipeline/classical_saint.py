@@ -191,9 +191,9 @@ def run_classical_pipeline(
     # %% Build results_df
     results_df = pd.concat(rows, ignore_index=True)
     
-    # Sort by Protein then gamma3 descending (hierarchical convention)
+    # Sort by Protein then gamma2 descending (analogous to hierarchical convention)
     results_df = results_df.sort_values(
-        by=["Protein", "gamma3"],
+        by=["Protein", "gamma2"],
         ascending=[True, False],
         ignore_index=True,
     )
