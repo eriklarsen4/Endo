@@ -32,11 +32,15 @@ def test_run_em_classical_basic():
 
     # Required keys
     assert set(results.keys()) >= {
+        "loglik_history",
+        "lambda1_history",
+        "lambda2_history",
+        "pi_history",
+        "gamma_history",
         "lambda1",
         "lambda2",
         "pi",
-        "gamma",
-        "loglik_history",
+        "gamma"
     }
 
     # Shapes

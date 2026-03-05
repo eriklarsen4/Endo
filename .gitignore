@@ -1,12 +1,49 @@
-.Rproj.user
-.Rhistory
-.RData
-.Ruserdata
-inst/doc
-Endo/python/proteomics.py
-
-# Python bytecode
+# Python bytecode and caches
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# R build artifacts
+*.Rcheck/
+*.tar.gz
+.Rhistory
+.RData
+.Ruserdata
+
+# RStudio / R project noise
+*.Rproj
+.Rproj.user/
+
+# Python virtual environments
+venv/
+env/
+.venv/
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# IDE noise
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Docker
+docker/
+Dockerfile
+*.dockerignore
+entrypoint.sh
+
+# GitHub Actions
+.github/
+
+# Analysis / scratch
+analysis/
+notebooks/
+reports/
+scratch/
+tmp/
+temp/

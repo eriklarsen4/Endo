@@ -7,6 +7,8 @@ Created on Wed Mar  4 08:35:19 2026
 
 # %% Import
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")
 
 from saint.diagnostics.diagnostics_hierarchical import make_hierarchical_plots
 

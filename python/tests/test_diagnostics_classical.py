@@ -6,6 +6,8 @@ Created on Wed Mar  4 09:02:15 2026
 """
 # %% Import
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")
 
 from saint.diagnostics.diagnostics_classical import make_classical_plots
 

@@ -1,0 +1,18 @@
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Build artifacts
+*.egg-info/
+build/
+dist/
+
+# Virtual environments (if created locally inside python/)
+venv/
+env/
+.venv/
+
+# Logs
+*.log

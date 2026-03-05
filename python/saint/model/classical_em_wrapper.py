@@ -191,8 +191,8 @@ def run_em_classical(
         log_lambda2 = np.log(lambda2 + eps)
 
         # Component-wise log-likelihood contributions: log p(X_i | lambda_k)
-        loglik_component1 = X_sum * log_lambda1 - lambda1
-        loglik_component2 = X_sum * log_lambda2 - lambda2
+        loglik_component1 = X * log_lambda1 - lambda1
+        loglik_component2 = X * log_lambda2 - lambda2
 
         # Log mixture weights
         log_pi = np.log(pi + eps)
@@ -249,10 +249,10 @@ def run_em_classical(
 
         # Responsibility-weighted counts for each component
         posterior_weighted_counts_component1 = (
-            posterior_membership_component1 * X_sum
+            posterior_membership_component1 * X
         )
         posterior_weighted_counts_component2 = (
-            posterior_membership_component2 * X_sum
+            posterior_membership_component2 * X
         )
 
         # Effective membership weights for each component

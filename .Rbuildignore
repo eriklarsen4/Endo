@@ -1,7 +1,0 @@
-^renv$
-^renv\.lock$
-^.*\.Rproj$
-^\.Rproj\.user$
-^\.github$
-*entrypoint.sh
-*proteomics.py
