@@ -41,7 +41,7 @@ entrypoint.sh
 .github/
 
 # Analysis / scratch
-analysis/
+#analysis/
 notebooks/
 reports/
 scratch/
