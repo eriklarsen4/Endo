@@ -1,5 +1,5 @@
  <!-- badges: start -->
-  [![R-CMD-check](https://github.com/eriklarsen4/Endo/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/eriklarsen4/Endo/actions/workflows/R-CMD-check.yaml)
+  ![R-CMD-check](https://github.com/eriklarsen4/Endo/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/eriklarsen4/Endo/actions/workflows/R-CMD-check.yaml)
   ![Static Badge](https://img.shields.io/badge/MBNeuroLab-darkblue)
   ![R](https://img.shields.io/badge/r-%23276DC3.svg?style=for-the-badge&logo=r&logoColor=white)
  <!-- badges: end -->
@@ -20,11 +20,11 @@ its own dedicated repository,
 [eriklarsen4/Itch](<https://github.com/eriklarsen4/Itch>),
 and the second publication's repository, `eriklarsen4/Hippo`, is under
 development. Please see those repositories for each paper's
-respective URL.
+respective URL. Among other datasets and analyses, they contain multiple, functionally validated bulk RNAseq datasets.
 
 Please see the [`FIREpHly` microscopy data vignette](<https://github.com/eriklarsen4/Endo/blob/dev/Rpkg/vignettes/FIREpHly.md>) and the [immunoprecipitation- label-free mass spec (`IPMS`) data vignette](<https://github.com/eriklarsen4/Endo/blob/dev/Rpkg/vignettes/IPMS.md>) for more detail on each dataset's data cleaning and analysis.
 
-Additional computational biology work on the published data is outlined in broad strokes [here](<https://github.com/eriklarsen4/Endo/tree/dev/python#readme>), with additional vignettes in progress. This work expands on the "gold standard" mixture modeling approach in affinity-precipitation mass spectrometry (`APMS` or `IPMS`) to infer proteins that truly interact with a target protein from a mixture of proteins.
+Additional computational biology work on the published data is outlined in broad strokes [here](<https://github.com/eriklarsen4/Endo/tree/dev/python#readme>), with other vignettes in progress. This work expands on the "gold standard" mixture modeling approach in affinity-precipitation mass spectrometry (`APMS` or `IPMS`) to infer proteins that truly interact with a target protein from a mixture of proteins.
 
 Three packages are associated with this repository:
 
