@@ -36,9 +36,9 @@ knitr::opts_chunk$set(
 This markdown was developed to formally document the data analysis pipeline for 
 TMEM184B immunoprecipitation tandem mass-spec experiments for 
 **Dr. Martha Bhattacharya's lab** at the **University of Arizona** for the
-endolysosomal paper under revision (2025-02-28) for the Journal of Cell Science
+endolysosomal paper published in the Journal of Cell Science (see the README for details)
 
-Until a container is built, the `R version` used was **R 4.3.2** with the
+Until a container is built, the `R version` used was **R 4.5.2** with the
 packages installed below
 
 ## Set up Environment
@@ -52,7 +52,7 @@ if (knitr::is_html_output()) {
 Attach packages
 
 ```{r Attach Packages, eval=T, include = T, message = F, warning = F, echo = T}
-packages <- c('TMEM', 'Endo', 'ggplot2', 'rstatix', 'forcats', 'knitr')
+packages <- c('Endo', 'ggplot2', 'rstatix', 'forcats', 'knitr')
 
 for (package in packages) {
   if (!require(package, character.only = T)) {

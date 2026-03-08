@@ -1,0 +1,455 @@
+---
+title: "IMPS Cluster Analysis"
+author: "Erik Larsen"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    fig_width: 10
+    fig_height: 10
+  pdf_document:
+    fig_width: 10
+    fig_height: 10
+    latex_engine: xelatex
+  md_document:
+    variant: gfm
+vignette: >
+  %\VignetteIndexEntry{IPMS Clustering vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 10,
+  fig.height = 10,
+  dev = c("png", "pdf"),
+  fig.path = "../analysis/R/hSaint/"
+)
+```
+
+## Overview
+
+This markdown was developed to formally document an ad hoc data analysis pipeline for 
+TMEM184B immunoprecipitation tandem mass-spec experiments for 
+**Dr. Martha Bhattacharya's lab** at the **University of Arizona** for the
+endolysosomal paper under revision (2025-02-28) for the Journal of Cell Science
+
+Until a container is built, the `R version` used was **R 4.3.2** with the
+packages installed below
+
+## Set up Environment
+
+```{r, results='asis', echo=FALSE}
+if (knitr::is_html_output()) {
+  cat('## Set up Environment {.tabset .tabset-pills .tabset-fade}\n')
+}
+```
+
+### Attach Packages
+
+```{r Attach Packages, eval=T, include = T, message = F, warning = F, echo = T}
+library(tidyverse)
+library(Endo)
+library(TMEM)
+
+library(dbscan)
+library(kernlab)
+library(RSpectra)
+library(pheatmap)
+library(dynamicTreeCut)
+```
+
+### Load the Proteomics TSCs
+
+```{r Load the IPMS hierarchical SAINT results, eval = T, include = T, message = F, warning = F, echo = T}
+IPMS_counts <- Endo::IPMS_counts |> 
+  dplyr::select(-1) |> 
+  dplyr::rename_with(
+    ~Endo::IPMS_counts |> 
+      dplyr::select(-1) |> 
+      dplyr::slice(1) |> 
+      unlist() |> 
+      as.character()
+  ) |> 
+  dplyr::slice(-1) |> 
+  dplyr::select(-dplyr::contains("407")) |> # remove extra samples
+  dplyr::rename(Protein = 1, AN = 2, MW = 3) |> # convert column names shorter
+  dplyr::mutate(Protein = stringr::str_extract(Protein, pattern = 'GN=[[:alnum:]]+') %>%
+                  gsub(., pattern = 'GN\\=', replacement = '')) |> # mutate HUGO symbols
+  dplyr::mutate(
+        dplyr::across(dplyr::contains("_"), ~dplyr::if_else(.x == '?', '0', .x)),
+        dplyr::across(dplyr::contains("_"), ~dplyr::if_else(.x == '', '0', .x)),
+        dplyr::across(dplyr::contains("_"), ~as.numeric(.x)
+                      ) # replace ?'s, empty columns with 0's; convert to numeric
+        ) |> 
+      dplyr::filter(
+        !grepl(AN, pattern = "DECOY")
+        ) |> # filter decoy proteins out
+      
+      dplyr::rename_with(
+        ~gsub(.x, pattern = '[0-9]+_', replacement = '')
+        ) |> # remove _'s from column names
+      
+      dplyr::rename_with(
+        ~gsub(.x, pattern = '^m', replacement = '')
+        ) |> # remove m's from column names (mTMEM)
+      
+      dplyr::rename(BirAV5_1 = `BirA-V1`, 
+                    BirAV5_2 = `BirA-V2`,
+                    TMEMV5_1 = `TMEM-V1`,
+                    TMEMV5_2 = `TMEM-V2`
+                    ) |> 
+  dplyr::filter(!is.na(Protein))
+
+  # keep MW and AN for future mapping if necessary
+protein_map <- IPMS_counts |> 
+  dplyr::select(Protein, AN, MW) |> 
+  dplyr::mutate(MW = gsub(MW, pattern = ' kDa', replacement = '') |> as.numeric())
+
+  # keep the df for matrix creation
+IPMS_counts <- IPMS_counts |> 
+  dplyr::select(-AN, -MW)
+
+  # sum the proteins that have multiple accessions for the same symbol
+IPMS_counts <- IPMS_counts |> 
+  dplyr::group_by(Protein) |> 
+  dplyr::summarize(dplyr::across(dplyr::everything(), sum))
+
+head(IPMS_counts)
+```
+
+### Load the Hierarchical SAINT Posterior Probabilities
+
+```{r Load the Hierarchical SAINT results}
+hSAINT <- readr::read_csv('../../analysis/python/hierarchical_results.csv', col_names = T) |> 
+  dplyr::group_by(Protein) |> 
+  dplyr::summarize(score = mean(gamma3)) |> 
+  dplyr::arrange(desc(score))
+```
+
+```{r Add Empirical Flags}
+hSAINT <- hSAINT |> 
+  dplyr::mutate(
+    lit_flag = dplyr::case_when(
+      grepl(Protein,
+            pattern = 'AHNAK|ALB|ANXA(1|2)|ASS1|ATP5|CFL1|CLTC|CSDA|EDARRAD|ENO|FARS(A|B)|FASN|FKSG30|GAPDH|GFAP|ILF(2|3)|LDHA|LGALS(1|3)|PCB(1|2)|PDIA6|PHB|PHB2|POTE2|PPIA|PRDX(1|2|3|4)|SERPIN(H1|A11)|SLC25A|TUFM|TXN|UBA52') ~ 1,
+      TRUE ~ 0), # Mulcahy contams (2008 paper)
+    lit_flag = dplyr::case_when(
+      lit_flag == 1 ~ 1,
+      grepl(Protein,
+            pattern = 'EEF1|EIF|HNRN|HSPA|KRT|TUB(A|B)|RPL|HIST2|H2A|RRP|(X|I)PO|NUP|DNAJ') ~ 1,
+      TRUE ~ 0), # Dunham contams (2008 paper)
+    CRAPome_flag = dplyr::case_when(Protein %in% c(
+      Endo::CRAPome_results |>
+        dplyr::filter(!grepl(Mapped, pattern = '/|identifier')) |>
+        dplyr::select(1:7) |>
+        dplyr::rename(User_input = User,
+                      Mapped_Gene_Symbol = Input,
+                      Num_Exp_Found = Mapped,
+                      Num_Exp_Total = Symbol,
+                      Avg_SC = Num,
+                      Max_SC = of) |>
+        dplyr::mutate(dplyr::across(c(3,5:7), ~as.numeric(.x))) |>
+        dplyr::select(-Gene) |> 
+        dplyr::filter(Num_Exp_Found > 35.8) |> # greater than 5% of experiments
+        dplyr::select(Mapped_Gene_Symbol) |>
+        unlist() |>
+        as.character() |> 
+        sort()
+      ) ~ 1, TRUE ~ 0)
+  )
+```
+
+
+### Transform Data
+
+```{r transform data}
+## re-shape 
+IPMS_mat <- as.matrix(IPMS_counts[,-1])
+rownames(IPMS_mat) <- IPMS_counts |> 
+  dplyr::select(1) |> unlist() |> as.character()
+
+# remove all zero's rows
+IPMS_mat <- IPMS_mat[rowSums(IPMS_mat) > 0 , , drop = FALSE]
+# remove all zero variance rows
+IPMS_mat <- IPMS_mat[apply(IPMS_mat, 1, sd)> 0, , drop = FALSE]
+
+# log transformed
+IPMS_mat_log <- log1p(IPMS_mat)
+
+# Z-transformed (confirming clusters are insensitive to large counts)
+IPMS_mat_Z <- t(scale(t(IPMS_mat)))
+```
+
+## Clustering
+
+```{r, results='asis', echo=FALSE}
+if (knitr::is_html_output()) {
+  cat('## Clustering {.tabset .tabset-pills .tabset-fade}\n')
+}
+```
+
+### Hierarchical
+
+#### Raw Counts
+
+```{r Hierarchical Clustering raw}
+d <- stats::as.dist(1 - stats::cor(t(IPMS_mat), use = 'pairwise.complete.obs'))
+hc <- stats::hclust(d, method = "average")
+```
+
+```{r Grid Search Cluster Size}
+sizes <- c(20, 30, 50, 80, 100)
+results <- list()
+
+for (m in sizes) {
+  cl <- dynamicTreeCut::cutreeDynamic(
+    dendro = hc,
+    distM = as.matrix(d),
+    deepSplit = 1,
+    pamRespectsDendro = TRUE,
+    minClusterSize = m
+  )
+  results[[as.character(m)]] <- cl
+  cat("minClusterSize =", m, "→", length(table(cl)), "modules\n")
+}
+rm(list = c('cl', 'm', 'sizes'))
+```
+
+  + `optimal minimum cluster size` is **50** (elbow; diminishing returns after)
+  
+  + `# modules` = **28**
+
+```{r Clusters on Raw Counts}
+clusters_opt <- dynamicTreeCut::cutreeDynamic(hc,
+                                          distM = as.matrix(d),
+                                          deepSplit = 1,
+                                          pamRespectsDendro = T,
+                                          minClusterSize = 50)
+names(clusters_opt) <- rownames(IPMS_mat)
+```
+```{r Get Modules}
+module_ids <- sort(unique(clusters_opt))
+module_colors <- stats::setNames(
+  grDevices::rainbow(length(module_ids), s = 0.6, v = 0.9),
+  module_ids
+)
+
+annotation_colors <- list(Module = module_colors)
+```
+
+Sparse data is too difficult to discern from a global view
+
+  -> Z transform the raw counts after clustering to plot
+  
+```{r RawZ scale}
+IPMS_z <- t(scale(t(IPMS_mat)))
+colnames(IPMS_z) <- colnames(IPMS_mat)
+
+condition <- sub('_.*', '', colnames(IPMS_mat))
+
+col_order <- unlist(
+  lapply(
+    split(seq_along(condition), condition), function(idx) {
+      submat <- IPMS_z[, idx, drop = FALSE]
+      hc_sub <- stats::hclust(stats::dist(t(submat)), method = 'ward.D2')
+      idx[hc_sub$order]
+    }))
+
+IPMS_z_ordered <- IPMS_z[, col_order]
+```
+
+## Module Descriptions
+
+```{r, results='asis', echo=FALSE}
+if (knitr::is_html_output()) {
+  cat('## Module Descriptions {.tabset .tabset-pills .tabset-fade}\n')
+}
+```
+
+### Hierarchical Raw Counts
+
+Extract gene names from the hierarchically clustered modules and convert to a dataframe
+
+```{r Extract Gene Names from Modules}
+modules_list_idx <- lapply(sort(unique(clusters_opt)), function(m) {
+  which(clusters_opt == m)
+})
+names(modules_list_idx) <- sort(unique(clusters_opt))
+
+modules_list <- lapply(sort(unique(clusters_opt)), function(m) {
+  rownames(IPMS_mat)[clusters_opt == m]
+})
+names(modules_list) <- sort(unique(clusters_opt)) |> as.character()
+
+modules_df <- modules_list %>%
+  purrr::map_df(., .f = as.data.frame, .id = 'module') |> 
+  dplyr::rename(Protein = 2) |> 
+  dplyr::relocate(Protein, .before = 1)
+```
+
+Include score summaries (mean and median posterior probability scores, ranks, and literature or CRAPome contamination rate)
+
+```{r Summarize SAINT Scores and Contamination Rates}
+module_scores <- modules_df |>  
+  dplyr::inner_join(
+    hSAINT
+  ) |> 
+  dplyr::arrange(desc(score)) |> 
+  dplyr::group_by(module) |> 
+  dplyr::summarize(mean_score = mean(score),
+                   median_score = stats::median(score),
+                   n = dplyr::n(),
+                   lit_flag_perc = (sum(lit_flag)/n)*100,
+                   CRAPome_flag_perc = (sum(CRAPome_flag)/n)*100) |> 
+  dplyr::arrange(desc(mean_score)) |> 
+  dplyr::mutate(mean_rank = dplyr::row_number()) |> 
+  dplyr::arrange(desc(median_score)) |> 
+  dplyr::mutate(median_rank = dplyr::row_number()) |> 
+  dplyr::arrange(desc(mean_score))
+```
+
+Join the module scores to the modules (per protein) dataframe and the `hSAINT` results for classification
+
+```{r Join the Summary dataframe to the Protein Level dataframes}
+modules_df <- modules_df |> 
+  dplyr::inner_join(
+    hSAINT
+  ) |> 
+  dplyr::full_join(
+    module_scores |> 
+      dplyr::ungroup()
+  ) |> 
+  dplyr::mutate(SAINT_classification = dplyr::case_when(mean_rank <= 5 ~ 'High SAINT',
+                                                        mean_rank > 5 ~ 'Low SAINT'
+                                                  ),
+                contams_classification = dplyr::case_when(lit_flag_perc > 5 ~'High Contaminants',
+                                                          TRUE ~ 'Low Contaminants')) |> 
+  dplyr::mutate(classification = paste0(SAINT_classification, ", ", contams_classification)) |> 
+  dplyr::select(-SAINT_classification,
+                -contams_classification) |> 
+  dplyr::relocate(classification, .after = module)
+```
+
+```{r Downstream Analysis}
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(ReactomePA)
+library(AnnotationDbi)
+
+EntrezIDs <- AnnotationDbi::select(
+  org.Hs.eg.db,
+  keys = modules_df |> dplyr::distinct(Protein) |> unlist() |> as.character(),
+  columns = 'ENTREZID',
+  keytype = 'SYMBOL'
+) |> 
+  dplyr::filter(!is.na(2))
+
+EntrezMap <- stats::setNames(EntrezIDs$ENTREZID, EntrezIDs$SYMBOL)
+```
+
+```{r}
+get_GO <- function(genes, ontology) {
+  clusterProfiler::enrichGO(
+    gene = modules_df |> dplyr::distinct(Protein) |> unlist() |> as.character(),
+    OrgDb = org.Hs.eg.db,
+    keyType = 'SYMBOL',
+    ont = ontology,
+    pAdjustMethod = 'BH',
+    qvalueCutoff = 0.05,
+    readable = T
+  )
+}
+
+get_kegg <- function(genes, EntrezMap) {
+  entrez <- EntrezMap[genes]
+  entrez <- entrez[!is.na(entrez)]
+  if (length(entrez)==0) {
+    return(NULL)
+  }
+  clusterProfiler::enrichKEGG(
+    gene = entrez,
+    organism = 'hsa',
+    pAdjustMethod = 'BH',
+    qvalueCutoff = 0.05
+  )
+}
+
+get_reactome <- function(genes, EntrezMap) {
+  entrez <- EntrezMap[genes]
+  entrez <- entrez[!is.na(entrez)]
+  if (length(entrez)==0) {
+    return(NULL)
+  }
+  ReactomePA::enrichPathway(
+    gene = entrez,
+    organism = 'human',
+    pAdjustMethod = 'BH',
+    qvalueCutoff = 0.05,
+    readable = T
+  )
+}
+
+enrichment_results <- lapply(modules_df |> dplyr::distinct(module) |> unlist() |> as.character(), function(mod){
+  genes <- modules_df |> dplyr::filter(module == mod) |> dplyr::distinct(Protein) |> unlist() |> as.character()
+  
+  list(
+    module = mod,
+    go_bp = get_GO(genes, ontology = 'BP'),
+    go_cc = get_GO(genes, ontology = 'CC'),
+    go_mf = get_GO(genes, ontology = 'MF'),
+    
+    kegg = get_kegg(genes, EntrezMap),
+    reactome = get_reactome(genes, EntrezMap)
+  )
+})
+
+names(enrichment_results) <- modules_df |> dplyr::distinct(module) |> unlist() |> as.character()
+```
+
+
+## Plots
+
+```{r, results='asis', echo=FALSE}
+if (knitr::is_html_output()) {
+  cat('## Plots {.tabset .tabset-pills .tabset-fade}\n')
+}
+```
+
+### Hierarchical
+
+#### Raw Counts
+
+```{r RawClusterZAll}
+pheatmap::pheatmap(
+  IPMS_z_ordered,
+  color = grDevices::colorRampPalette(c('navy', 'white', 'darkgoldenrod'))((200)),
+  cluster_rows = hc,
+  cluster_cols = F,
+  show_rownames = F,
+  annotation_row = data.frame(Module = clusters_opt),
+  annotation_colors = annotation_colors,
+  angle_col = 0,
+  use_raster = F,
+  border_color = NA
+)
+```
+
+####
+
+```{r}
+
+```
+
+
+#### Z-scored Counts
+
+```{r Hierarchical Clustering Z, include = T, warning = F, message = F, echo = T}
+d_Z <- as.dist(1 - cor(t(IPMS_mat_Z), method = "pearson"))
+hc_Z <- hclust(d_Z, method = "average")
+```
+
