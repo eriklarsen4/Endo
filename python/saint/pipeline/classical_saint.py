@@ -146,46 +146,46 @@ def run_classical_pipeline(
             verbose=verbose,
         )
         
-    # Extract convergence diagnostics
-    convergence_info = results_em.get("convergence_info", {})
-    iteration_count = results_em.get("iteration_count", None)
-    
-    all_results[bait] = results_em
-    all_tau_info[bait] = {}  # no tau grid in classical pipeline
-    all_convergence_info[bait] = convergence_info
-    all_iteration_counts[bait] = iteration_count
-    
-    # Optional plotting
-    if make_plots:
-        figs = make_classical_plots(results_em, bait, plot_dir=plot_dir)
-        all_results[bait]["figures"] = figs
-    
-    # Build prey-level rows for this bait
-    proteins = loader_metadata["proteins_by_bait"][bait]
-    
-    lambda1 = results_em["lambda1"]
-    lambda2 = results_em["lambda2"]
-    pi = results_em["pi"]
-    gamma = results_em["gamma"]
-    
-    # Classical model has only two components
-    pi1, pi2 = pi[0], pi[1]
-    
-    gamma1 = gamma[:, 0]
-    gamma2 = np.full_like(gamma1, np.nan, dtype=float)
-    
-    df_bait = pd.DataFrame({
-        "Protein": proteins,
-        "bait": bait,
-        "lambda1": lambda1,
-        "lambda2": lambda2,
-        "pi1": pi1,
-        "pi2": pi2,
-        "gamma1": gamma1,
-        "gamma2": gamma2,
-    })
-    
-    rows.append(df_bait)
+        # Extract convergence diagnostics
+        convergence_info = results_em.get("convergence_info", {})
+        iteration_count = results_em.get("iteration_count", None)
+        
+        all_results[bait] = results_em
+        all_tau_info[bait] = {}  # no tau grid in classical pipeline
+        all_convergence_info[bait] = convergence_info
+        all_iteration_counts[bait] = iteration_count
+        
+        # Optional plotting
+        if make_plots:
+            figs = make_classical_plots(results_em, bait, plot_dir=plot_dir)
+            all_results[bait]["figures"] = figs
+        
+        # Build prey-level rows for this bait
+        proteins = loader_metadata["proteins_by_bait"][bait]
+        
+        lambda1 = results_em["lambda1"]
+        lambda2 = results_em["lambda2"]
+        pi = results_em["pi"]
+        gamma = results_em["gamma"]
+        
+        # Classical model has only two components
+        pi1, pi2 = pi[0], pi[1]
+        
+        gamma1 = gamma[:, 0]
+        gamma2 = np.full_like(gamma1, np.nan, dtype=float)
+        
+        df_bait = pd.DataFrame({
+            "Protein": proteins,
+            "bait": bait,
+            "lambda1": lambda1,
+            "lambda2": lambda2,
+            "pi1": pi1,
+            "pi2": pi2,
+            "gamma1": gamma1,
+            "gamma2": gamma2,
+        })
+        
+        rows.append(df_bait)
     
     # %% Build results_df
     results_df = pd.concat(rows, ignore_index=True)
@@ -217,6 +217,8 @@ def run_classical_pipeline(
         inferred_fields=InferredFields(
             baits=loader_metadata.get("baits", []),
             proteins_by_bait=loader_metadata.get("proteins_by_bait", {}),
+            control_baits=loader_metadata.get("control_baits", []),
+            treatment_baits=loader_metadata.get("treatment_baits", []),
             extra_fields={
                 k: v
                 for k, v in loader_metadata.items()

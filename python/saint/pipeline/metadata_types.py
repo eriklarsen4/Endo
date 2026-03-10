@@ -24,6 +24,7 @@ class InferredFields:
     replicate_map: Dict[str, List[str]] = field(default_factory=dict)
     conditions: Dict[str, List[str]] = field(default_factory=dict)
     negative_controls_inferred: List[str] = field(default_factory=list)
+    control_baits: List[str] = field(default_factory=list) # for classical; revisit later
     extra_fields: Dict[str, Any] = field(default_factory=dict)
 
 

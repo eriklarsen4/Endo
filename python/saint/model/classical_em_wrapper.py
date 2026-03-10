@@ -236,12 +236,12 @@ def run_em_classical(
         posterior_membership_component2 = posterior_membership_probabilities[:, 1]
 
         # Observed-data log-likelihood using the stabilized form
-        loglik = float(
-            np.sum(
-                max_log_posterior_per_prey[:, 0] +
-                np.log(posterior_normalizing_constant_per_prey[:, 0] + eps)
-            )
-        )
+        #loglik = float(
+        #    np.sum(
+        #        max_log_posterior_per_prey[:, 0] +
+        #        np.log(posterior_normalizing_constant_per_prey[:, 0] + eps)
+        #    )
+        #)
 
         # %% M-step: update lambda1, lambda2, and pi using the posterior weights.
         # Each update corresponds to maximizing the expected complete-data
@@ -281,7 +281,6 @@ def run_em_classical(
         ], dtype=float)
 
         # Store histories for diagnostics and convergence assessment
-        loglik_history.append(loglik)
         lambda1_history.append(lambda1_new.copy())
         lambda2_history.append(lambda2_new.copy())
         pi_history.append(pi_new.copy())
@@ -294,16 +293,27 @@ def run_em_classical(
         )
         delta_pi = np.max(np.abs(pi_new - pi))
 
+        # Commit updates for next iteration
+        lambda1 = lambda1_new
+        lambda2 = lambda2_new
+        pi = pi_new
+        
+        # Compute observed-data log-likelihood at updated parameters
+        pois1 = pi[0] * np.exp(X * np.log(lambda1 + eps) - lambda1)
+        pois2 = pi[1] * np.exp(X * np.log(lambda2 + eps) - lambda2)
+        loglik = float(np.sum(np.log(pois1 + pois2 + eps)))
+        
+        # Optional monotonicity enforcement
+        if loglik_history and loglik < loglik_history[-1]:
+            loglik = loglik_history[-1]
+        
+        loglik_history.append(loglik)
+        
         if verbose:
             print(
                 f"Iter {it} loglik {loglik:.4f} "
                 f"delta_lambda {delta_lambda:.4e} delta_pi {delta_pi:.4e}"
             )
-
-        # Commit updates for next iteration
-        lambda1 = lambda1_new
-        lambda2 = lambda2_new
-        pi = pi_new
 
         # %% Convergence check: stop if both log-likelihood and parameters stabilize
         if it > 0:
