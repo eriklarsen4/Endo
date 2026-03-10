@@ -218,7 +218,6 @@ def run_classical_pipeline(
             baits=loader_metadata.get("baits", []),
             proteins_by_bait=loader_metadata.get("proteins_by_bait", {}),
             control_baits=loader_metadata.get("control_baits", []),
-            treatment_baits=loader_metadata.get("treatment_baits", []),
             extra_fields={
                 k: v
                 for k, v in loader_metadata.items()
@@ -226,7 +225,6 @@ def run_classical_pipeline(
                     "baits",
                     "proteins_by_bait",
                     "control_baits",
-                    "treatment_baits",
                 }
             },
         ),
