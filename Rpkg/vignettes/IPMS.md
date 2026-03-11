@@ -43,7 +43,7 @@ the packages installed below
 Attach packages
 
 ``` r
-packages <- c('TMEM', 'Endo', 'ggplot2', 'rstatix', 'forcats', 'knitr')
+packages <- c('Endo', 'ggplot2', 'rstatix', 'forcats', 'knitr', 'TMEM')
 
 for (package in packages) {
   if (!require(package, character.only = T)) {

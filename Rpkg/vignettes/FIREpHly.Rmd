@@ -56,8 +56,7 @@ if (knitr::is_html_output()) {
 ### Attach packages
 
 ```{r Attach packages, include = T, message = F, warning = F, echo = T}
-packages <- c(#'TMEM',
-               'Endo',
+packages <- c('Endo',
               'tidyverse',
               'ggplot2',
               'ggtext',

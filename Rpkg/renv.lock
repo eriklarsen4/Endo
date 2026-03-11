@@ -1649,7 +1649,7 @@
     "TMEM": {
       "Package": "TMEM",
       "Version": "1.0.0",
-      "Source": "Local",
+      "Source": "GitHub",
       "Type": "Package",
       "Title": "Downstream Data Analysis Functions for NGS and Microscopy Data",
       "Authors@R": "c(person(\"Erik\", \"Larsen\", email = \"eriklarsen@arizona.edu\", role = c(\"cre\", \"aut\"), comment =  c(ORCID = '0000-0002-5878-1538')))",
@@ -1689,10 +1689,13 @@
       "VignetteBuilder": "knitr",
       "Config/testthat/edition": "3",
       "Language": "en-US",
-      "RemoteType": "local",
-      "RemoteUrl": "C:\\Users\\Erik\\Desktop\\Programming\\R\\Bio\\TMEM",
-      "NeedsCompilation": "no",
-      "Author": "Erik Larsen [cre, aut] (ORCID: <https://orcid.org/0000-0002-5878-1538>)"
+      "Author": "Erik Larsen [cre, aut] (ORCID: <https://orcid.org/0000-0002-5878-1538>)",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteUsername": "eriklarsen4",
+      "RemoteRepo": "TMEM",
+      "RemoteRef": "main",
+      "RemoteSha": "a2b6d280faedb339fbaee42fc03b82a109c20415"
     },
     "XVector": {
       "Package": "XVector",
@@ -9614,6 +9617,51 @@
       "RoxygenNote": "7.3.3",
       "NeedsCompilation": "no",
       "Author": "Simon Garnier [aut, cre], Noam Ross [ctb, cph], Bob Rudis [ctb, cph], Marco Sciaini [ctb, cph], Antônio Pedro Camargo [ctb, cph], Cédric Scherer [ctb, cph]",
+      "Repository": "CRAN"
+    },
+    "visNetwork": {
+      "Package": "visNetwork",
+      "Version": "2.1.4",
+      "Source": "Repository",
+      "Title": "Network Visualization using 'vis.js' Library",
+      "Authors@R": "c( person(family = \"Almende B.V. and Contributors\", role = c(\"aut\", \"cph\"), comment = \"vis.js library in htmlwidgets/lib, https://visjs.org/, https://github.com/visjs/vis-network\"), person(\"Benoit\", \"Thieurmel\", role = c(\"aut\", \"cre\"), comment = \"R interface\", email = \"bthieurmel@gmail.com\") )",
+      "Maintainer": "Benoit Thieurmel <bthieurmel@gmail.com>",
+      "Description": "Provides an R interface to the 'vis.js' JavaScript charting library. It allows an interactive visualization of networks.",
+      "BugReports": "https://github.com/datastorm-open/visNetwork/issues",
+      "URL": "https://datastorm-open.github.io/visNetwork/",
+      "Depends": [
+        "R (>= 3.0)"
+      ],
+      "Imports": [
+        "htmlwidgets",
+        "htmltools",
+        "jsonlite",
+        "magrittr",
+        "utils",
+        "methods",
+        "grDevices",
+        "stats"
+      ],
+      "License": "MIT + file LICENSE",
+      "Encoding": "UTF-8",
+      "Suggests": [
+        "knitr",
+        "rmarkdown",
+        "webshot",
+        "igraph",
+        "rpart",
+        "shiny",
+        "shinyWidgets",
+        "colourpicker",
+        "sparkline",
+        "ggraph",
+        "tidygraph",
+        "flashClust"
+      ],
+      "VignetteBuilder": "knitr, rmarkdown",
+      "RoxygenNote": "7.3.3",
+      "NeedsCompilation": "no",
+      "Author": "Almende B.V. and Contributors [aut, cph] (vis.js library in htmlwidgets/lib, https://visjs.org/, https://github.com/visjs/vis-network), Benoit Thieurmel [aut, cre] (R interface)",
       "Repository": "CRAN"
     },
     "vroom": {

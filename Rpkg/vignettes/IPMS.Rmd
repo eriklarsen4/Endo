@@ -52,7 +52,7 @@ if (knitr::is_html_output()) {
 Attach packages
 
 ```{r Attach Packages, eval=T, include = T, message = F, warning = F, echo = T}
-packages <- c('Endo', 'ggplot2', 'rstatix', 'forcats', 'knitr')
+packages <- c('Endo', 'ggplot2', 'rstatix', 'forcats', 'knitr', 'TMEM')
 
 for (package in packages) {
   if (!require(package, character.only = T)) {

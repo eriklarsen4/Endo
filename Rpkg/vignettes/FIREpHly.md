@@ -17,8 +17,7 @@ packages installed below
 #### Attach packages
 
 ``` r
-packages <- c(#'TMEM',
-               'Endo',
+packages <- c('Endo',
               'tidyverse',
               'ggplot2',
               'ggtext',
