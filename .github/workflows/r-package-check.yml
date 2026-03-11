@@ -43,6 +43,10 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install pkg-config cairo pango harfbuzz freetype libpng gettext && brew link --force gettext
 
+      - name: Disable renv staged installs (macOS)
+        if: runner.os == 'macOS'
+        run: echo "RENV_CONFIG_INSTALL_STAGED=false" >> $GITHUB_ENV
+
       - name: Set renv paths                    # required for windows cache restore
         run: echo "RENV_PATHS_LIBRARY=${{ github.workspace }}/Rpkg/renv/library" >> $GITHUB_ENV
 
@@ -66,7 +70,7 @@ jobs:
       - name: Print renv library path (Windows)
         if: runner.os == 'Windows'
         working-directory: Rpkg
-        run: Rscript -e "print(renv::paths$library())"
+        run: Rscript -e "print(renv::paths[['library']])"
 
       - name: Restore renv                      # restore project environment
         working-directory: Rpkg
