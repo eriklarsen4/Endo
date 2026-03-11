@@ -41,10 +41,14 @@ jobs:
 
       - name: Install macOS system libs
         if: runner.os == 'macOS'
-        run: brew install pkg-config cairo pango harfbuzz freetype libpng
+        run: brew install pkg-config cairo pango harfbuzz freetype libpng gettext && brew link --force gettext
 
       - name: Set renv paths                    # required for windows cache restore
         run: echo "RENV_PATHS_LIBRARY=${{ github.workspace }}/Rpkg/renv/library" >> $GITHUB_ENV
+
+      - name: Create renv library directory (Windows)
+        if: runner.os == 'Windows'
+        run: mkdir $env:GITHUB_WORKSPACE\\Rpkg\\renv\\library
 
       - name: Cache renv                        # cache renv library for speed
         uses: actions/cache@v3
