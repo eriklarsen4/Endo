@@ -33,6 +33,7 @@ jobs:
         with:
           r-version: ${{ matrix.config.r }}
           use-public-rspm: true
+          arch: arm64                           # required for macos binary installs
 
       - name: install linux system libs         # required for igraph and curl
         if: runner.os == 'Linux'
@@ -40,18 +41,22 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libcurl4-openssl-dev libglpk-dev libgmp3-dev
 
+      - name: set renv paths                    # required for windows cache restore
+        run: echo "RENV_PATHS_LIBRARY=${{ github.workspace }}/Rpkg/renv/library" >> $GITHUB_ENV
+
       - name: cache renv                        # cache renv library for speed
         uses: actions/cache@v3
         with:
           path: ${{ env.RENV_PATHS_LIBRARY }}
-          key: ${{ runner.os }}-renv-${{ hashFiles('**/renv.lock') }}
+          key: ${{ runner.os }}-renv-${{ hashFiles('Rpkg/renv.lock') }}
           restore-keys: ${{ runner.os }}-renv-
 
       - name: restore renv                      # restore project environment
         working-directory: Rpkg
         run: Rscript -e "renv::restore()"
 
-      - name: install rcmdcheck                 # install check tool outside renv
+      - name: install rcmdcheck
+        working-directory: Rpkg               # install check tool outside renv
         run: Rscript -e "install.packages('rcmdcheck')"
 
       - name: run check                         # run r cmd check
