@@ -40,6 +40,10 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
+      # Remove pak
+      - name: Remove preinstalled pak
+        run: Rscript -e "if ('pak' %in% rownames(installed.packages())) remove.packages('pak')"
+
       # Install package dependencies + rcmdcheck (required by check workflow)
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
