@@ -44,7 +44,7 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           working-directory: Rpkg
-          dependencies: R
+          dependencies: '"R"'
           extra-packages: |
             any::rcmdcheck
           needs: check
