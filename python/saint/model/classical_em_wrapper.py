@@ -323,6 +323,32 @@ def run_em_classical(
                 and delta_pi < tol_params
             ):
                 break
+            
+        # %% Convergence diagnostics
+        iteration_count = it + 1
+        
+        if len(loglik_history) > 1:
+            final_delta_loglik = abs(loglik_history[-1] - loglik_history[-2])
+        else:
+            final_delta_loglik = None
+        
+        convergence_info = {
+            "converged": (
+                it < max_iter - 1
+                and final_delta_loglik is not None
+                and final_delta_loglik < tol_loglik
+                and delta_lambda < tol_params
+                and delta_pi < tol_params
+            ),
+            "reason": (
+                "tolerance_reached"
+                if it < max_iter - 1
+                else "max_iter_reached"
+            ),
+            "final_delta_loglik": final_delta_loglik,
+            "final_delta_lambda": float(delta_lambda),
+            "final_delta_pi": float(delta_pi),
+        }
 
     # %% Final output: histories and last-iteration parameter values
     return {
@@ -334,5 +360,7 @@ def run_em_classical(
         "lambda1": lambda1,
         "lambda2": lambda2,
         "pi": pi,
-        "gamma": posterior_membership_probabilities
+        "gamma": posterior_membership_probabilities,
+        "convergence_info": convergence_info,
+        "iteration_count": iteration_count,
     }
