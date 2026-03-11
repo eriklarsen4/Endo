@@ -22,7 +22,7 @@ jobs:
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
-      R_KEEP_PKG_SOURCE: yes
+      R_KEEP_PKG_SOURCE: no
       R_COMPILE_AND_INSTALL_PACKAGES: never     # force binary-only installs on Windows
 
     steps:
@@ -62,6 +62,11 @@ jobs:
         with:
           path: C:/Users/runneradmin/AppData/Local/R/win-library/${{ matrix.config.r }}
           key: windows-rlib-v1-${{ hashFiles('Rpkg/renv.lock') }}
+
+      - name: Print renv library path (Windows)
+        if: runner.os == 'Windows'
+        working-directory: Rpkg
+        run: Rscript -e "print(renv::paths$library())"
 
       - name: Restore renv                      # restore project environment
         working-directory: Rpkg
