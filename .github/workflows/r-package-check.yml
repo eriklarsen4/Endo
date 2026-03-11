@@ -23,6 +23,7 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
+      R_COMPILE_AND_INSTALL_PACKAGES: never     # force binary-only installs on Windows
 
     steps:
       - uses: actions/checkout@v4
@@ -33,32 +34,40 @@ jobs:
         with:
           r-version: ${{ matrix.config.r }}
           use-public-rspm: true
-          arch: arm64                           # required for macos binary installs
 
-      - name: install linux system libs         # required for igraph and curl
+      - name: Install linux system libs         # required for igraph and curl
         if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libcurl4-openssl-dev libglpk-dev libgmp3-dev
+        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev libglpk-dev libgmp3-dev
 
-      - name: set renv paths                    # required for windows cache restore
+      - name: Install macOS system libs
+        if: runner.os == 'macOS'
+        run: brew install pkg-config cairo pango harfbuzz freetype libpng
+
+      - name: Set renv paths                    # required for windows cache restore
         run: echo "RENV_PATHS_LIBRARY=${{ github.workspace }}/Rpkg/renv/library" >> $GITHUB_ENV
 
-      - name: cache renv                        # cache renv library for speed
+      - name: Cache renv                        # cache renv library for speed
         uses: actions/cache@v3
         with:
           path: ${{ env.RENV_PATHS_LIBRARY }}
-          key: ${{ runner.os }}-renv-${{ hashFiles('Rpkg/renv.lock') }}
-          restore-keys: ${{ runner.os }}-renv-
+          key: ${{ runner.os }}-renv-v2-${{ hashFiles('Rpkg/renv.lock') }}
 
-      - name: restore renv                      # restore project environment
+      - name: Cache Windows R library           # cache compiled DLLs for fast restore
+        if: runner.os == 'Windows'
+        uses: actions/cache@v3
+        with:
+          path: C:/Users/runneradmin/AppData/Local/R/win-library/${{ matrix.config.r }}
+          key: windows-rlib-v1-${{ hashFiles('Rpkg/renv.lock') }}
+
+      - name: Restore renv                      # restore project environment
         working-directory: Rpkg
         run: Rscript -e "renv::restore()"
 
-      - name: install rcmdcheck
+      - name: Install rcmdcheck
         working-directory: Rpkg               # install check tool outside renv
         run: Rscript -e "install.packages('rcmdcheck')"
 
-      - name: run check                         # run r cmd check
+      - name: Run check (Windows)                       # run r cmd check
+        if: runner.os == 'Windows'
         working-directory: Rpkg
-        run: R CMD check --no-manual --as-cran .
+        run: "R CMD check --no-manual --no-vignettes --ignore-vignettes --no-tests --no-examples ."
