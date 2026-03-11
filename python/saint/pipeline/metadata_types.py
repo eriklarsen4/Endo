@@ -19,12 +19,13 @@ class UserProvidedFields:
 
 @dataclass
 class InferredFields:
-    baits: List[str] = field(default_factory=list)
-    proteins_by_bait: Dict[str, List[str]] = field(default_factory=dict)
-    replicate_map: Dict[str, List[str]] = field(default_factory=dict)
-    conditions: Dict[str, List[str]] = field(default_factory=dict)
+    baits: List[str]
+    proteins_by_bait: Dict[str, List[str]]
+    replicate_map: Dict[str, Any] = field(default_factory=dict)
+    conditions: Dict[str, Any] = field(default_factory=dict)
     negative_controls_inferred: List[str] = field(default_factory=list)
-    control_baits: List[str] = field(default_factory=list) # for classical; revisit later
+    control_baits: List[str] = field(default_factory=list)
+    treatment_baits: List[str] = field(default_factory=list)
     extra_fields: Dict[str, Any] = field(default_factory=dict)
 
 
