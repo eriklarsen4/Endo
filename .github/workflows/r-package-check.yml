@@ -40,17 +40,13 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
-      # Install pak for CI integration; renv resolves package dependencies before pak is installed
-      - name: Install pak early
-        run: Rscript -e "install.packages('pak', repos='https://r-lib.github.io/p/pak/stable/')"
-
-      # Install package dependencies + rcmdcheck + pak (required by check workflow)
+      # Install package dependencies + rcmdcheck (required by check workflow)
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           working-directory: Rpkg
+          use-pak: false
           extra-packages: |
             any::rcmdcheck
-            any::pak
           needs: check
 
       # Run R CMD check
