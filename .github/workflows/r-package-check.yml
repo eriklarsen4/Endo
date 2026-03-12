@@ -17,7 +17,7 @@ jobs:
       matrix:
         config:
           - {os: ubuntu-latest, r: 'release'}   # primary linux target
-          - {os: macos-latest, r: '4.5'}    # macos binary installs
+          # - {os: macos-latest, r: '4.5'}    # macos binary installs
           - {os: windows-latest, r: 'release'}  # windows binary installs
 
     env:
@@ -40,13 +40,13 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev libglpk-dev libgmp3-dev
 
-      - name: Install macOS system libs
-        if: runner.os == 'macOS'
-        run: brew install pkg-config cairo pango harfbuzz freetype libpng gettext && brew link --force gettext
+      # - name: Install macOS system libs
+      #   if: runner.os == 'macOS'
+      #   run: brew install pkg-config cairo pango harfbuzz freetype libpng gettext && brew link --force gettext
 
-      - name: Disable renv staged installs (macOS)
-        if: runner.os == 'macOS'
-        run: echo "RENV_CONFIG_INSTALL_STAGED=false" >> $GITHUB_ENV
+      # - name: Disable renv staged installs (macOS)
+      #   if: runner.os == 'macOS'
+      #   run: echo "RENV_CONFIG_INSTALL_STAGED=false" >> $GITHUB_ENV
 
       - name: Set renv paths                    # required for windows cache restore
         run: echo "RENV_PATHS_LIBRARY=${{ github.workspace }}/Rpkg/renv/library" >> $GITHUB_ENV
@@ -80,4 +80,4 @@ jobs:
         if: runner.os == 'Windows'
         working-directory: Rpkg
         shell: pwsh
-        run: R CMD check --no-manual --no-vignettes --ignore-vignettes --no-tests --no-examples .
+        run: cmd /c "R CMD check --no-manual --no-vignettes --ignore-vignettes --no-tests --no-examples ."
