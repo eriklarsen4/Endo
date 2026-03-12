@@ -17,7 +17,7 @@ jobs:
       matrix:
         config:
           - {os: ubuntu-latest, r: 'release'}   # primary linux target
-          - {os: macos-latest, r: '4.4'}    # macos binary installs
+          - {os: macos-latest, r: '4.5'}    # macos binary installs
           - {os: windows-latest, r: 'release'}  # windows binary installs
 
     env:
@@ -79,5 +79,5 @@ jobs:
       - name: Run check (Windows)                       # run r cmd check
         if: runner.os == 'Windows'
         working-directory: Rpkg
-        shell: cmd
+        shell: pwsh
         run: R CMD check --no-manual --no-vignettes --ignore-vignettes --no-tests --no-examples .
