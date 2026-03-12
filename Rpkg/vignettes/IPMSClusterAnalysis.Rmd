@@ -31,7 +31,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-## Overview
+# Overview
 
 This markdown was developed to formally document an ad hoc data analysis pipeline for 
 TMEM184B immunoprecipitation tandem mass-spec experiments for 
@@ -41,29 +41,47 @@ endolysosomal paper under revision (2025-02-28) for the Journal of Cell Science
 Until a container is built, the `R version` used was **R 4.3.2** with the
 packages installed below
 
-## Set up Environment
+# Set up Environment
 
 ```{r, results='asis', echo=FALSE}
 if (knitr::is_html_output()) {
-  cat('## Set up Environment {.tabset .tabset-pills .tabset-fade}\n')
+  cat('# Set up Environment {.tabset .tabset-pills .tabset-fade}\n')
 }
 ```
 
-### Attach Packages
+## Attach Packages
 
 ```{r Attach Packages, eval=T, include = T, message = F, warning = F, echo = T}
+# data/wrangling
 library(tidyverse)
 library(Endo)
-library(TMEM)
 
+# clustering
 library(dbscan)
 library(kernlab)
 library(RSpectra)
 library(pheatmap)
 library(dynamicTreeCut)
+
+# GSEA/viz
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(ReactomePA)
+library(AnnotationDbi)
+
+# progress bar
+library(progressr)
+
+# parallelization
+library(future)
+library(future.apply)
+
+# sub-module/network graphs
+library(igraph)
+library(visNetwork)
 ```
 
-### Load the Proteomics TSCs
+## Load the Proteomics TSCs
 
 ```{r Load the IPMS hierarchical SAINT results, eval = T, include = T, message = F, warning = F, echo = T}
 IPMS_counts <- Endo::IPMS_counts |> 
@@ -122,7 +140,7 @@ IPMS_counts <- IPMS_counts |>
 head(IPMS_counts)
 ```
 
-### Load the Hierarchical SAINT Posterior Probabilities
+## Load the Hierarchical SAINT Posterior Probabilities
 
 ```{r Load the Hierarchical SAINT results}
 hSAINT <- readr::read_csv('../../analysis/python/hierarchical_results.csv', col_names = T) |> 
@@ -165,7 +183,7 @@ hSAINT <- hSAINT |>
 ```
 
 
-### Transform Data
+## Transform Data
 
 ```{r transform data}
 ## re-shape 
@@ -185,17 +203,17 @@ IPMS_mat_log <- log1p(IPMS_mat)
 IPMS_mat_Z <- t(scale(t(IPMS_mat)))
 ```
 
-## Clustering
+# Clustering
 
 ```{r, results='asis', echo=FALSE}
 if (knitr::is_html_output()) {
-  cat('## Clustering {.tabset .tabset-pills .tabset-fade}\n')
+  cat('# Clustering {.tabset .tabset-pills .tabset-fade}\n')
 }
 ```
 
-### Hierarchical
+## Hierarchical Clustering
 
-#### Raw Counts
+### Raw Counts
 
 ```{r Hierarchical Clustering raw}
 d <- stats::as.dist(1 - stats::cor(t(IPMS_mat), use = 'pairwise.complete.obs'))
@@ -217,7 +235,7 @@ for (m in sizes) {
   results[[as.character(m)]] <- cl
   cat("minClusterSize =", m, "→", length(table(cl)), "modules\n")
 }
-rm(list = c('cl', 'm', 'sizes'))
+rm(list = c('cl', 'm', 'sizes', 'results'))
 ```
 
   + `optimal minimum cluster size` is **50** (elbow; diminishing returns after)
@@ -226,10 +244,10 @@ rm(list = c('cl', 'm', 'sizes'))
 
 ```{r Clusters on Raw Counts}
 clusters_opt <- dynamicTreeCut::cutreeDynamic(hc,
-                                          distM = as.matrix(d),
-                                          deepSplit = 1,
-                                          pamRespectsDendro = T,
-                                          minClusterSize = 50)
+                                              distM = as.matrix(d),
+                                              deepSplit = 1,
+                                              pamRespectsDendro = T,
+                                              minClusterSize = 50)
 names(clusters_opt) <- rownames(IPMS_mat)
 ```
 ```{r Get Modules}
@@ -244,7 +262,7 @@ annotation_colors <- list(Module = module_colors)
 
 Sparse data is too difficult to discern from a global view
 
-  -> Z transform the raw counts after clustering to plot
+  -> Z transform the raw counts **after clustering** to plot
   
 ```{r RawZ scale}
 IPMS_z <- t(scale(t(IPMS_mat)))
@@ -261,6 +279,8 @@ col_order <- unlist(
     }))
 
 IPMS_z_ordered <- IPMS_z[, col_order]
+
+rm(list = c('condition', 'col_order'))
 ```
 
 ## Module Descriptions
@@ -303,6 +323,7 @@ module_scores <- modules_df |>
   dplyr::group_by(module) |> 
   dplyr::summarize(mean_score = mean(score),
                    median_score = stats::median(score),
+                   score_mass = sum(score),
                    n = dplyr::n(),
                    lit_flag_perc = (sum(lit_flag)/n)*100,
                    CRAPome_flag_perc = (sum(CRAPome_flag)/n)*100) |> 
@@ -310,7 +331,9 @@ module_scores <- modules_df |>
   dplyr::mutate(mean_rank = dplyr::row_number()) |> 
   dplyr::arrange(desc(median_score)) |> 
   dplyr::mutate(median_rank = dplyr::row_number()) |> 
-  dplyr::arrange(desc(mean_score))
+  dplyr::arrange(desc(score_mass)) |> 
+  dplyr::mutate(total_rank = dplyr::row_number()) |> 
+  dplyr::arrange(mean_rank)
 ```
 
 Join the module scores to the modules (per protein) dataframe and the `hSAINT` results for classification
@@ -324,26 +347,29 @@ modules_df <- modules_df |>
     module_scores |> 
       dplyr::ungroup()
   ) |> 
-  dplyr::mutate(SAINT_classification = dplyr::case_when(mean_rank <= 5 ~ 'High SAINT',
-                                                        mean_rank > 5 ~ 'Low SAINT'
-                                                  ),
-                contams_classification = dplyr::case_when(lit_flag_perc > 5 ~'High Contaminants',
-                                                          TRUE ~ 'Low Contaminants')) |> 
-  dplyr::mutate(classification = paste0(SAINT_classification, ", ", contams_classification)) |> 
+  dplyr::mutate(
+    SAINT_classification = dplyr::case_when(mean_rank <= 5 ~ 'High SAINT',
+                                            mean_rank > 5 ~ 'Low SAINT'
+                                            ),
+    
+    contams_classification = dplyr::case_when(lit_flag_perc > 5 ~'High Contaminants',
+                                              TRUE ~ 'Low Contaminants')) |> 
+  dplyr::mutate(classification = paste0(SAINT_classification,
+                                        ", ",
+                                        contams_classification)) |> 
   dplyr::select(-SAINT_classification,
                 -contams_classification) |> 
   dplyr::relocate(classification, .after = module)
 ```
 
-```{r Downstream Analysis}
-library(clusterProfiler)
-library(org.Hs.eg.db)
-library(ReactomePA)
-library(AnnotationDbi)
+### Gene Set Enrichment Analysis
 
+Gather `EntrezIDs` for `KEGG` and `Reactome`
+
+```{r Downstream Analysis}
 EntrezIDs <- AnnotationDbi::select(
   org.Hs.eg.db,
-  keys = modules_df |> dplyr::distinct(Protein) |> unlist() |> as.character(),
+  keys = modules_df |> dplyr::distinct(Protein) |> dplyr::pull(),
   columns = 'ENTREZID',
   keytype = 'SYMBOL'
 ) |> 
@@ -352,10 +378,17 @@ EntrezIDs <- AnnotationDbi::select(
 EntrezMap <- stats::setNames(EntrezIDs$ENTREZID, EntrezIDs$SYMBOL)
 ```
 
-```{r}
+Create enrichment functions
+
+```{r Create Enrichment Functions}
+background_genes <- modules_df |> 
+  dplyr::distinct(Protein) |> 
+  dplyr::pull()
+
 get_GO <- function(genes, ontology) {
   clusterProfiler::enrichGO(
-    gene = modules_df |> dplyr::distinct(Protein) |> unlist() |> as.character(),
+    gene = genes,
+    universe = background_genes,
     OrgDb = org.Hs.eg.db,
     keyType = 'SYMBOL',
     ont = ontology,
@@ -393,22 +426,293 @@ get_reactome <- function(genes, EntrezMap) {
     readable = T
   )
 }
+```
 
-enrichment_results <- lapply(modules_df |> dplyr::distinct(module) |> unlist() |> as.character(), function(mod){
-  genes <- modules_df |> dplyr::filter(module == mod) |> dplyr::distinct(Protein) |> unlist() |> as.character()
-  
-  list(
-    module = mod,
-    go_bp = get_GO(genes, ontology = 'BP'),
-    go_cc = get_GO(genes, ontology = 'CC'),
-    go_mf = get_GO(genes, ontology = 'MF'),
-    
-    kegg = get_kegg(genes, EntrezMap),
-    reactome = get_reactome(genes, EntrezMap)
+Run the functions on the dataset in parallel (multiple CPUs)
+
+```{r Parallelize Enrichment}
+future::plan(future::multisession, workers = 6)
+progressr::handlers(progressr::handler_txtprogressbar())
+
+module_ids <- sort(unique(modules_df$module))
+
+progressr::with_progress({
+  p <- progressr::progressor(steps = length(module_ids))
+
+  enrichment_results <- future.apply::future_lapply(
+    module_ids,
+    function(mod) {
+
+      # tick the progress bar
+      p(sprintf("Module %s", mod))
+
+      genes <- modules_df |>
+        dplyr::filter(module == mod) |>
+        dplyr::distinct(Protein) |>
+        dplyr::pull(Protein)
+
+      list(
+        module = mod,
+        go_bp  = get_GO(genes, ontology = "BP"),
+        go_cc  = get_GO(genes, ontology = "CC"),
+        go_mf  = get_GO(genes, ontology = "MF")
+        # add KEGG/Reactome later
+      )
+    }
   )
 })
 
-names(enrichment_results) <- modules_df |> dplyr::distinct(module) |> unlist() |> as.character()
+names(enrichment_results) <- module_ids
+rm(p)
+```
+
+Gather enrichment results
+
+```{r Consolidate Enrichment Results}
+global_enrichment_results_df <- lapply(enrichment_results, function(x) {
+  x %>% 
+    purrr::map_df(., .f = as.data.frame, .id = 'GO_Category') |> 
+    dplyr::rename(module = 2, GO_Term = Description, GO_ID = ID) |> 
+    tidyr::fill(module, .direction = 'down') |> 
+    dplyr::filter(!is.na(GO_ID)) |> 
+    dplyr::mutate(GO_Category = gsub(GO_Category,
+                                     pattern = 'go_',
+                                     replacement = '') %>% 
+                    stringr::str_to_upper(.)) |> 
+    tibble::remove_rownames() |> 
+    dplyr::distinct()
+  }
+) %>%
+  purrr::map_df(., .f = as.data.frame)
+
+modules_df |> 
+  dplyr::filter(grepl(classification, pattern = 'High SAINT, Low Con')) |> 
+  dplyr::distinct(module) |> 
+  dplyr::pull()
+
+global_enrichment_results_df |> 
+  dplyr::group_by(module) |> 
+  dplyr::summarize(n = dplyr::n()) |> 
+  dplyr::arrange(desc(n))
+
+# global_enrichment_results_df |> 
+#   dplyr::inner_join(
+#     module_scores
+#   ) |> 
+#   dplyr::relocate(c(dplyr::contains("_score"), dplyr::contains("perc"), n, Count), .after = module) |> 
+#   dplyr::relocate(GO_ID, .before = mean_rank) |> 
+#   dplyr::group_by(module) |> 
+#   dplyr::arrange(desc(mean_score), p.adjust)
+#   dplyr::filter(module == 9
+#                 )
+# 
+# module_scores |> 
+#   dplyr::filter(module %in% c('2', '1', '9'))
+```
+
+
+The "High SAINT score" modules were among the modules with significant enrichment against the background Proteins in the experiments;
+
+However, many did not, *including TMEM's* and mostly because of substantial 
+mixing between proteins scored as "noise" (low posterior probability of being a true interactor) and signal
+
+### Sub-Module Analysis
+
+Sub-module enrichment analysis on modules without any enrichment (to describe
+themes of proteins within these modules)
+
+```{r SubModule index}
+"%notin%" <- Negate("%in%")
+
+# index the modules without significant enrichment to describe sub-modules
+tier2_modules <- c(seq(1:28) |> as.character())[
+  which(c(seq(1:28) |> as.character()) %notin% c(global_enrichment_results_df |> 
+          dplyr::distinct(module) |> 
+          dplyr::pull()) == T)] 
+```
+
+```{r SubModule function}
+# function to gather sub-modules for each module that did not return enrichment results
+submodules_from_hclust <- function(
+  hc_object,
+  modules_df,
+  n_sub_per_module = 3L
+) {
+  # number of existing modules
+  n_modules <- length(unique(modules_df$module))
+
+  # total number of clusters in the finer cut
+  K_big <- n_modules * n_sub_per_module
+
+  # finer cut of the same tree
+  sub_labels_all <- stats::cutree(hc_object, k = K_big)
+
+  # assemble into a tibble
+  sub_df <- tibble::tibble(
+    Protein   = names(sub_labels_all),
+    sub_label = sub_labels_all
+  )
+
+  # attach existing module labels
+  sub_df <- dplyr::inner_join(
+    sub_df,
+    modules_df,
+    by = "Protein"
+  )
+
+  # define submodules as (module, sub_label) pairs
+  submodules_df <- sub_df %>%
+    dplyr::group_by(module, sub_label) %>%
+    dplyr::mutate(
+      submodule = paste0("sub", dplyr::cur_group_id())
+    ) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(Protein, module, submodule)
+
+  return(submodules_df)
+}
+```
+
+```{r SubModule application}
+submodules_df <- dplyr::filter(modules_df, module %in% tier2_modules)
+
+submodules_df <- submodules_from_hclust(
+  hc_object  = hc,
+  modules_df = submodules_df,
+  n_sub_per_module = 3L
+)
+```
+
+```{r GSEA on SubModules}
+submodule_enrichment_results <- submodules_df %>%
+  dplyr::group_by(module, submodule) %>%
+  dplyr::group_modify(~ {
+    genes <- .x$Protein
+
+    tibble::tibble(
+      go_bp = list(get_GO(genes, ontology = "BP")),
+      go_cc = list(get_GO(genes, ontology = "CC")),
+      go_mf = list(get_GO(genes, ontology = "MF"))
+    )
+  }) %>%
+  dplyr::ungroup()
+```
+
+```{r Gather SubModule GSEA data}
+submodule_enrichment_results_df <- submodule_enrichment_results |> 
+    tidyr::pivot_longer(
+      cols      = c(dplyr::contains("go_")),
+      names_to  = "GO_Category",
+      values_to = "values"
+    ) %>%
+    dplyr::mutate(
+      GO_Category = gsub(GO_Category, pattern = 'go_', replacement = '') |> 
+        stringr::str_to_upper(),
+      GO_tbl = purrr::map(values, ~ as.data.frame(.x))
+    ) |>
+    tidyr::unnest(GO_tbl) |>
+    dplyr::rename(
+      GO_ID   = ID,
+      GO_Term = Description
+    ) |>
+    dplyr::select(
+      module,
+      submodule,
+      GO_Category,
+      GO_Term,
+      GO_ID,
+      dplyr::everything(),
+      -values
+    )
+```
+
+```{r Assess TMEM SubModule}
+submodule_enrichment_results_df |> 
+  dplyr::filter(module == '12')
+# TMEM's module not enriched
+
+submodules_df %>%
+  dplyr::filter(module == 12) %>%
+  dplyr::count(submodule, name = "n_proteins")
+# lots of proteins in the submodule
+
+submodules_df |> 
+  dplyr::filter(Protein == 'TMEM184B')
+# but present in the submodules
+```
+
+```{r Find UnEnriched SubModules}
+modules_with_submodule_enrichment <- tier2_modules
+modules_without_submodule_enrichment <- generics::setdiff(modules_with_submodule_enrichment,
+                                                          submodule_enrichment_results_df |> 
+                                                            dplyr::distinct(module) |> 
+                                                            dplyr::pull())
+modules_with_submodule_enrichment <- submodule_enrichment_results_df |> 
+  dplyr::distinct(module) |> 
+  dplyr::pull()
+```
+
+```{r Collapse GO data}
+
+collapsed_go <- global_enrichment_results_df |> 
+  dplyr::group_by(module, GO_Category) |> 
+  dplyr::summarize(
+    theme = paste0(
+      head(GO_Term[order(p.adjust)], 3),
+      collapse = '; '
+    ),
+    .groups = 'drop'
+  ) |> 
+  dplyr::full_join(
+   submodule_enrichment_results_df |>
+  dplyr::group_by(module, submodule, GO_Category) |> 
+  dplyr::summarize(
+    theme = paste0(
+      head(GO_Term[order(p.adjust)], 3),
+      collapse = "; "
+    ),
+    .groups = "drop"
+  )
+) %>%
+  dplyr::bind_rows(
+    tibble::tibble(module = modules_without_submodule_enrichment)
+  )
+```
+
+```{r GOTermSimilarityNetwork}
+
+go_network <- global_enrichment_results_df |> 
+  dplyr::full_join(submodule_enrichment_results_df) |> 
+  dplyr::full_join(module_scores) |> 
+  dplyr::mutate(Tier = dplyr::case_when(is.na(submodule) ~ 'Tier1',TRUE~'Tier2'),
+                node_to = GO_Term,
+                node_from = paste0(
+                  
+                  "Module", module,
+                  ifelse(is.na(submodule),
+                         '',
+                         paste0('_SubModule',
+                                submodule %>% 
+                                  stringr::str_extract(., pattern = '\\d+')))),
+                weight = -log10(p.adjust)) |> 
+  dplyr::filter(weight > -log10(0.05))
+
+go_network |> 
+  dplyr::filter(module == 2)
+
+g <- igraph::graph_from_data_frame(
+  d = go_network[, c("node_from", "node_to",
+                     "weight", "geneID", "p.adjust", "FoldEnrichment")],
+  directed = TRUE,
+  vertices =
+    dplyr::bind_rows(
+      go_network |> dplyr::transmute(name = node_from, score_mass, submodule),
+      go_network |> dplyr::transmute(name = node_to,
+                                     score_mass = NA_real_,
+                                     submodule = NA_character_)
+    ) |>
+    dplyr::distinct(name, .keep_all = TRUE)
+)
 ```
 
 
@@ -422,7 +726,7 @@ if (knitr::is_html_output()) {
 
 ### Hierarchical
 
-#### Raw Counts
+#### Raw Counts Heatmap
 
 ```{r RawClusterZAll}
 pheatmap::pheatmap(
@@ -439,10 +743,215 @@ pheatmap::pheatmap(
 )
 ```
 
-####
+#### Module Dot Plots
+
+```{r RawModuleSubModuleDotPlotOfGOTerms}
+global_enrichment_results_df |> 
+  dplyr::full_join(submodule_enrichment_results_df) |> 
+  dplyr::full_join(module_scores) |> 
+  dplyr::filter(!is.na(GO_Term)) |> 
+  dplyr::filter(!is.na(GO_Category)) |> 
+  dplyr::mutate(
+    Tier = dplyr::case_when(
+      is.na(submodule) ~ paste0('Mod. ', module),
+      TRUE ~ paste0('Mod. ', module,
+                    ':\nsubmod. ',
+                    gsub(submodule, pattern = 'sub', replacement = ''))
+      ),
+    is_enriched = dplyr::case_when(is.na(submodule) ~ 'Enriched',
+                                   TRUE ~ 'Not Enriched')
+    ) |> 
+  dplyr::group_by(module) |>  
+  dplyr::slice_head(n = 3) |>
+  dplyr::arrange(p.adjust) |>
+  ggplot2::ggplot(
+    ggplot2::aes(
+      x = -log10(p.adjust),
+      y = forcats::fct_rev(forcats::fct_infreq(GO_Term, mean_score)),
+      color = GO_Category,
+      size = FoldEnrichment,
+      alpha = mean_score,
+      shape = is_enriched,
+    )
+  ) +
+  ggplot2::geom_vline(xintercept = -log10(0.05),
+                      linetype = 'dashed',
+                      color = 'firebrick',
+                      size = 1,
+                      alpha = 0.5) +
+  ggplot2::geom_point() +
+  ggplot2::facet_grid(Tier ~ ., scales = 'free_y') +
+  ggplot2::labs(title = 'GO Enrichment Across\nModules and SubModules\nin TMEM184B IPMS\nHierarchical Clustering',
+                x = '-log10(Adj.P-val)',
+                y = 'GO Term',
+                alpha = 'Hierarchical\nSAINT\nScore',
+                size = 'FoldEnrichment',
+                color = 'GO Category',
+                shape = 'IsEnrichedModule') +
+  ggplot2::theme_bw() +
+  ggplot2::theme(title = ggplot2::element_text(face = 'bold', size = 12),
+                 axis.text = ggplot2::element_text(face = 'bold', size = 10),
+                 strip.text = ggplot2::element_text(face = 'bold', size = 7), 
+                 strip.background = ggplot2::element_rect(color = 'black',
+                                                          fill = 'white')) +
+  ggplot2::guides(#shape = ggplot2::guide_legend(override.aes = list(size = 4, shape = c(19, 17))),
+                  color = ggplot2::guide_legend(override.aes = list(size = 4, shape = 19, color = c('navy', 'darkgoldenrod3', 'firebrick'))),
+                  alpha = ggplot2::guide_legend(override.aes = list(size = 5, shape = 19)),
+                  size = ggplot2::guide_legend(override.aes = list(shape = 19))
+                  # size = 'none'
+                  ) +
+  ggplot2::scale_color_manual(values = c('navy', 'darkgoldenrod3', 'firebrick')) +
+  ggplot2::scale_fill_manual(values = c('navy', 'darkgoldenrod3', 'firebrick'))
+```
+
+#### GO Term Similarity Network
+
+```{r GOTermSimilarityNetwork}
+coords <- igraph::layout_with_fr(g)
+coords <- coords*200
+
+visNetwork::visNetwork(
+  nodes = data.frame(
+    id    = igraph::V(g)$name,
+    label = igraph::V(g)$name,
+    size = scales::rescale(
+      (\(x){ x[is.na(x)] <- 0; x })(igraph::V(g)$score_mass),
+      to = c(20, 60)
+    ),
+    x = coords[,1],
+    y = coords[,2],
+    group = base::interaction(
+                        {
+                          x <- igraph::V(g)$module
+                          if (length(x) == 0) rep("", igraph::vcount(g)) else x
+                        },
+                        {
+                          x <- igraph::V(g)$submodule
+                          if (length(x) == 0) {
+                            rep("", igraph::vcount(g))
+                          } else {
+                            ifelse(nzchar(x), x, igraph::V(g)$module)
+                          }
+                        },
+                        drop = TRUE,
+                        lex.order = TRUE
+                      ),
+    title = sapply(
+      igraph::V(g),
+      function(v) {
+        incoming_edges <- igraph::incident(g, v, mode = "all")
+        incoming_edges <- incoming_edges[
+          igraph::ends(g, incoming_edges)[,2] == igraph::V(g)[v]$name
+        ]
+        raw_gene_strings <- igraph::E(g)[incoming_edges]$geneID
+        raw_gene_strings <- unlist(raw_gene_strings, use.names = FALSE)
+
+        genes <- raw_gene_strings |>
+          as.character() |>
+          (\(x) x[!is.na(x)])() |>
+          strsplit("\\\\") |>
+          unlist() |>
+          (\(x) x[nzchar(x)])() |>
+          unique()
+
+        term <- igraph::V(g)[v]$name
+        saint_value <- igraph::V(g)[v]$score_mass
+        if (is.na(saint_value)) saint_value <- 0
+        is_module <- nzchar(igraph::V(g)[v]$submodule)
+
+        if (is_module) {
+          paste0(
+            "<div style='background-color:#ffffff;color:#1f4e79;",
+            "padding:6px 10px;border-radius:6px;",
+            "border:1px solid #1f4e79;font-size:12px;'>",
+            "<b>", term, "</b><br>",
+            "<b>SAINT mass:</b> ", signif(saint_value, 3), "<br>",
+            if (length(genes) > 0)
+              paste0("<u>Proteins:</u><br>", paste(genes, collapse = "<br>"))
+            else "",
+            "</div>"
+          )
+        } else {
+          paste0(
+            "<div style='background-color:#ffffff;color:#1f4e79;",
+            "padding:6px 10px;border-radius:6px;",
+            "border:1px solid #1f4e79;font-size:12px;'>",
+            "<b>", term, "</b><br>",
+            if (length(genes) > 0)
+              paste0("<u>Proteins:</u><br>", paste(genes, collapse = "<br>"))
+            else "",
+            "</div>"
+          )
+        }
+      }
+    )
+  ),
+  edges = data.frame(
+    from  = igraph::as_data_frame(g, "edges")$from,
+    to    = igraph::as_data_frame(g, "edges")$to,
+    value = igraph::E(g)$weight,
+    title = vapply(
+      seq_along(igraph::E(g)),
+      function(i) {
+        paste0(
+          "<div style='background-color:#ffffff;color:#1f4e79;",
+          "padding:6px 10px;border-radius:6px;",
+          "border:1px solid #1f4e79;font-size:12px;'>",
+          "<b>p.adjust:</b> ", signif(igraph::E(g)$p.adjust[i], 3), "<br>",
+          "<b>weight:</b> ", signif(igraph::E(g)$weight[i], 3),
+          "</div>"
+        )
+      },
+      FUN.VALUE = character(1)
+    )
+  )
+) |>
+  # visNetwork::visNodes(color = NULL) |>
+  visNetwork::visEdges(arrows = "to") |>
+  visNetwork::visNodes(
+    scaling = list(min = 5, max = 40),
+    shadow  = TRUE
+  ) |>
+  visNetwork::visLayout(randomSeed = 1) |>
+  visNetwork::visPhysics(enabled = FALSE) |>
+  visNetwork::visInteraction(
+    dragView = TRUE,
+    zoomView = TRUE
+  ) |>
+  visNetwork::visOptions(nodesIdSelection = TRUE)
+rm(coords)
+```
+
+Modules with enriched GO Terms are in blue; "sub-modules", modules with enough
+mixture of disparate proteins and of widely different signal strength, were
+re-enriched by their module, creating "sub-modules". *These are the non-blue colors.*
+
+Modules **2**, **9**, **15**, and **26** are of interest, having terms in line with what might
+be expected from a `TMEM` experiment, and having robust `Hierarchical SAINT` scores
+(hover over Module/SubModule nodes).
+
+`TMEM184B`, itself, was in Module **12**, which did *NOT* return any enriched GO Terms, likely
+due to its membrane protein nature (and putative localization, where it touches 
+a wide variety of proteins and organelles). This is common among TM protein IPMS.
+
+#### GO Terms Mapped Back to the Hierarchical Heatmap
 
 ```{r}
-
+# gaps_row = which(diff(clusters_opt) != 0)
+# modules_df
+# pheatmap::pheatmap(
+#   IPMS_z_ordered,
+#   color = grDevices::colorRampPalette(c('navy', 'white', 'darkgoldenrod'))(200),
+#   cluster_rows = hc$order,
+#   cluster_cols = FALSE,
+#   show_rownames = FALSE,
+#   annotation_row = data.frame(Module = clusters_opt),
+#   annotation_colors = annotation_colors,
+#   gaps_row = which(diff(clusters_opt) != 0),
+#   angle_col = 0,
+#   use_raster = FALSE,
+#   border_color = NA
+# )
 ```
 
 
