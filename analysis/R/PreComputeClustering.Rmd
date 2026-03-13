@@ -1,0 +1,206 @@
+---
+title: "IPMS Clustering Pre-Processing"
+author: "Erik Larsen"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    fig_width: 10
+    fig_height: 10
+  pdf_document:
+    fig_width: 10
+    fig_height: 10
+    latex_engine: xelatex
+  md_document:
+    variant: gfm
+vignette: >
+  %\VignetteIndexEntry{Clustering PreProcessing vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 10,
+  fig.height = 10,
+  dev = c("png", "pdf"),
+  fig.path = "../analysis/R/hSaint/"
+)
+```
+
+# Overview
+
+This markdown was developed to formally document an ad-hoc cluster analysis for 
+TMEM184B immunoprecipitation tandem mass-spec experiments for 
+**Dr. Martha Bhattacharya's lab** at the **University of Arizona** for the
+endolysosomal paper under revision (2025-02-28) for the Journal of Cell Science
+
+This vignette documents the data pre-processing of IPMS counts and [Hierarchical 
+SAINT mixture modeling](../python/README.md) for `Hierarchical Clustering`, 
+`Spectral Clustering`, and `HDBSCAN`
+
+```{r, results='asis', echo=FALSE}
+fmt <- knitr::pandoc_to()
+
+if (identical(fmt, "html")) {
+  cat('# Set up Environment {.tabset .tabset-pills .tabset-fade}\n')
+} else if (identical(fmt, "markdown")) {
+  cat('<details><summary><strong>Set up Environment</strong></summary>\n')
+} else {
+  cat('# Set up Environment\n')
+}
+```
+
+## Attach Packages
+
+```{r Attach Packages}
+# data/wrangling
+library(tidyverse)
+library(Endo)
+```
+
+## Load the Proteomics TSCs
+
+```{r Load the IPMS hierarchical SAINT results}
+IPMS_counts <- Endo::IPMS_counts |> 
+  dplyr::select(-1) |> 
+  dplyr::rename_with(
+    ~Endo::IPMS_counts |> 
+      dplyr::select(-1) |> 
+      dplyr::slice(1) |> 
+      unlist() |> as.character() 
+  ) |> 
+  dplyr::slice(-1) |> 
+  dplyr::select(-dplyr::contains("407")) |> # remove extra samples
+  dplyr::rename(Protein = 1, AN = 2, MW = 3) |> # convert column names shorter
+  dplyr::mutate(Protein = stringr::str_extract(Protein,
+                                               pattern = 'GN=[[:alnum:]]+') %>%
+                  gsub(.,
+                       pattern = 'GN\\=',
+                       replacement = '')) |> # mutate HUGO symbols
+  dplyr::mutate(
+        dplyr::across(dplyr::contains("_"), ~dplyr::if_else(.x == '?', '0', .x)),
+        dplyr::across(dplyr::contains("_"), ~dplyr::if_else(.x == '', '0', .x)),
+        dplyr::across(dplyr::contains("_"), ~as.numeric(.x)
+                      ) # replace ?'s, empty columns with 0's; make numeric
+        ) |> 
+      dplyr::filter(
+        !grepl(AN, pattern = "DECOY")
+        ) |> # filter decoy proteins out
+      
+      dplyr::rename_with(
+        ~gsub(.x, pattern = '[0-9]+_', replacement = '')
+        ) |> # remove _'s from column names
+      
+      dplyr::rename_with(
+        ~gsub(.x, pattern = '^m', replacement = '')
+        ) |> # remove m's from column names (mTMEM)
+      
+      dplyr::rename(BirAV5_1 = `BirA-V1`, 
+                    BirAV5_2 = `BirA-V2`,
+                    TMEMV5_1 = `TMEM-V1`,
+                    TMEMV5_2 = `TMEM-V2`
+                    ) |> 
+  dplyr::filter(!is.na(Protein))
+
+  # keep MW and AN for future mapping if necessary
+protein_map <- IPMS_counts |> 
+  dplyr::select(Protein, AN, MW) |> 
+  dplyr::mutate(MW = gsub(MW, pattern = ' kDa', replacement = '') |> 
+                  as.numeric())
+
+  # keep the df for matrix creation
+IPMS_counts <- IPMS_counts |> 
+  dplyr::select(-AN, -MW)
+
+  # sum the proteins that have multiple accessions for the same symbol
+IPMS_counts <- IPMS_counts |> 
+  dplyr::group_by(Protein) |> 
+  dplyr::summarize(dplyr::across(dplyr::everything(), sum))
+
+head(IPMS_counts)
+```
+
+## Load the Hierarchical SAINT Posterior Probabilities
+
+```{r Load the Hierarchical SAINT results}
+hSAINT <- readr::read_csv('../../analysis/python/hierarchical_results.csv',
+                          col_names = T) |> 
+  dplyr::group_by(Protein) |> 
+  dplyr::summarize(score = mean(gamma3)) |> 
+  dplyr::arrange(desc(score))
+```
+
+```{r Add Empirical Flags}
+hSAINT <- hSAINT |> 
+  dplyr::mutate(
+    lit_flag = dplyr::case_when(
+      grepl(Protein,
+            pattern = 'AHNAK|ALB|ANXA(1|2)|ASS1|ATP5|CFL1|CLTC|CSDA|EDARRAD|ENO|FARS(A|B)|FASN|FKSG30|GAPDH|GFAP|ILF(2|3)|LDHA|LGALS(1|3)|PCB(1|2)|PDIA6|PHB|PHB2|POTE2|PPIA|PRDX(1|2|3|4)|SERPIN(H1|A11)|SLC25A|TUFM|TXN|UBA52') ~ 1,
+      TRUE ~ 0), # Mulcahy contams (2008 paper)
+    lit_flag = dplyr::case_when(
+      lit_flag == 1 ~ 1,
+      grepl(Protein,
+            pattern = 'EEF1|EIF|HNRN|HSPA|KRT|TUB(A|B)|RPL|HIST2|H2A|RRP|(X|I)PO|NUP|DNAJ') ~ 1,
+      TRUE ~ 0), # Dunham contams (2008 paper)
+    CRAPome_flag = dplyr::case_when(Protein %in% c(
+      Endo::CRAPome_results |>
+        dplyr::filter(!grepl(Mapped, pattern = '/|identifier')) |>
+        dplyr::select(1:7) |>
+        dplyr::rename(User_input = User,
+                      Mapped_Gene_Symbol = Input,
+                      Num_Exp_Found = Mapped,
+                      Num_Exp_Total = Symbol,
+                      Avg_SC = Num,
+                      Max_SC = of) |>
+        dplyr::mutate(dplyr::across(c(3,5:7), ~as.numeric(.x))) |>
+        dplyr::select(-Gene) |> 
+        dplyr::filter(Num_Exp_Found > 35.8) |> # greater than 5% of experiments
+        dplyr::select(Mapped_Gene_Symbol) |>
+        dplyr::pull() |> 
+        sort()
+      ) ~ 1, TRUE ~ 0)
+  )
+```
+
+## Transform Data
+
+```{r Transform data}
+## re-shape 
+IPMS_mat <- as.matrix(IPMS_counts[-1,-1])
+rownames(IPMS_mat) <- IPMS_counts |> 
+  dplyr::select(1) |> 
+  dplyr::slice(-1) |> 
+  dplyr::pull()
+
+# remove all zero's rows
+IPMS_mat <- IPMS_mat[rowSums(IPMS_mat) > 0 , , drop = FALSE]
+# remove all zero variance rows
+IPMS_mat <- IPMS_mat[apply(IPMS_mat, 1, sd)> 0, , drop = FALSE]
+
+# log transformed
+IPMS_mat_log <- log1p(IPMS_mat)
+
+# Z-transformed (confirming clusters are insensitive to large counts)
+IPMS_mat_Z <- t(scale(t(IPMS_mat)))
+```
+
+## Save Data
+
+```{r Save PreCompute Objects}
+save(IPMS_counts,
+     IPMS_mat,
+     IPMS_mat_log,
+     IPMS_mat_Z,
+     hSAINT,
+     file = 'precompute_objects.rda')
+```
+
+```{r, results='asis', echo=FALSE}
+if (!knitr::is_html_output()) {
+  cat('</details>\n')
+}
+```
