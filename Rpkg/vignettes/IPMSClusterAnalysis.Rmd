@@ -1,5 +1,5 @@
 ---
-title: "IMPS Cluster Analysis"
+title: "IMPS Hierarchical Clustering"
 author: "Erik Larsen"
 date: "`r Sys.Date()`"
 output:
