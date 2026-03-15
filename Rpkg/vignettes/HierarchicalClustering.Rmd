@@ -1,7 +1,8 @@
 ---
-title: "IMPS Hierarchical Clustering"
+title: "Hierarchical Clustering vignette"
 author: "Erik Larsen"
 date: "`r Sys.Date()`"
+always_allow_html: true
 output:
   html_document:
     toc: true
@@ -75,7 +76,6 @@ library(visNetwork)
 options(stringsAsFactors = FALSE)
 ```
 
-
 ## Load the Pre-Computed Data
 
 ```{r Data Load}
@@ -85,7 +85,6 @@ load("../../analysis/R/precompute_objects.rda")
 
 ```{r Second Data Load, echo = FALSE}
 rm(IPMS_mat_log)
-
 ```
 
 
@@ -189,24 +188,24 @@ if (identical(fmt, "html")) {
 }
 ```
 In order to assess this method and also to compare/validate the hierarchical SAINT
-model, describing modules/clusters based on the proteins in them is useful.
+model, describing modules/clusters based on the proteins in them is useful
 
 Similarly localized proteins could be expected to have similar abundances to 
-each other as well as the target (**TMEM184B**).
+each other as well as the target (**TMEM184B**)
 
 Similar functioning proteins could also be expected to have similar abundances 
-to each other as well as the target.
+to each other as well as the target
 
 Describing these modules/clusters attained by `hierarchical clustering` via 
 gene ontology gene set enrichment analysis is, therefore, useful and standard 
-practice.
+practice
 
 Furthermore, we may be able to assemble a `protein-protein interaction network`
-from the results.
+from the results
 
 I outline this below-- the methods and results for acquiring these modules, 
 their constituent proteins, and how we make sense of them-- visualized as
-`dotplots`, `heatmaps`, and a `network`. I include searchable tables printed last.
+`dotplots`, `heatmaps`, and a `network`. I include searchable tables printed last
 
 ## Extract Modules
 
@@ -657,13 +656,19 @@ global_enrichment_results_df |>
                  strip.background = ggplot2::element_rect(color = 'black',
                                                           fill = 'white')) +
   ggplot2::guides(#shape = ggplot2::guide_legend(override.aes = list(size = 4, shape = c(19, 17))),
-                  color = ggplot2::guide_legend(override.aes = list(size = 4, shape = 19, color = c('navy', 'darkgoldenrod3', 'firebrick'))),
-                  alpha = ggplot2::guide_legend(override.aes = list(size = 5, shape = 19)),
+                  color = ggplot2::guide_legend(override.aes = list(size = 4,
+                                                                    shape = 19,
+                                                                    color = c('navy',
+                                                                              'darkgoldenrod3',
+                                                                              'firebrick'))),
+                  alpha = ggplot2::guide_legend(override.aes = list(size = 5,
+                                                                    shape = 19)),
                   size = ggplot2::guide_legend(override.aes = list(shape = 19))
                   # size = 'none'
                   ) +
-  ggplot2::scale_color_manual(values = c('navy', 'darkgoldenrod3', 'firebrick')) +
-  ggplot2::scale_fill_manual(values = c('navy', 'darkgoldenrod3', 'firebrick'))
+  ggplot2::scale_fill_manual(values = c('navy',
+                                        'darkgoldenrod3',
+                                        'firebrick'))
 ```
 
 ## Module GO (similarity) Network
@@ -817,7 +822,9 @@ if (identical(fmt, "html")) {
 ```{r RawZHeatmapAll, render = T}
 pheatmap::pheatmap(
   IPMS_z_ordered,
-  color = grDevices::colorRampPalette(c('navy', 'white', 'darkgoldenrod'))((200)),
+  color = grDevices::colorRampPalette(c('navy',
+                                        'white',
+                                        'darkgoldenrod'))((200)),
   cluster_rows = hc,
   cluster_cols = F,
   show_rownames = F,
@@ -852,7 +859,9 @@ pheatmap::pheatmap(
                        dplyr::pull(Protein)
                      ),
                  ],
-  color = grDevices::colorRampPalette(c('navy', 'white', 'darkgoldenrod'))((200)),
+  color = grDevices::colorRampPalette(c('navy',
+                                        'white',
+                                        'darkgoldenrod'))((200)),
   cluster_rows = T,
   cluster_cols = F,
   show_rownames = T,
@@ -901,7 +910,9 @@ pheatmap::pheatmap(
                                    grepl(classification,
                                          pattern = 'High SAINT, Low')) |> 
                    dplyr::pull(Protein)),],
-  color = grDevices::colorRampPalette(c('navy', 'white', 'darkgoldenrod'))((200)),
+  color = grDevices::colorRampPalette(c('navy',
+                                        'white',
+                                        'darkgoldenrod'))((200)),
   cluster_rows = T,
   cluster_cols = F,
   show_rownames = F,
@@ -937,7 +948,9 @@ pheatmap::pheatmap(
                                    grepl(classification,
                                          pattern = 'High SAINT, High')) |> 
                    dplyr::pull(Protein)),],
-  color = grDevices::colorRampPalette(c('navy', 'white', 'darkgoldenrod'))((200)),
+  color = grDevices::colorRampPalette(c('navy',
+                                        'white',
+                                        'darkgoldenrod'))((200)),
   cluster_rows = T,
   cluster_cols = F,
   show_rownames = F,
@@ -955,7 +968,10 @@ pheatmap::pheatmap(
       ]
     ),
   
-  annotation_colors = list(Module = c('darkorange', 'darkviolet', 'lightpink', 'skyblue')),
+  annotation_colors = list(Module = c('darkorange',
+                                      'darkviolet',
+                                      'lightpink',
+                                      'skyblue')),
   angle_col = 90,
   use_raster = F,
   border_color = NA,
@@ -973,7 +989,9 @@ pheatmap::pheatmap(
                                    grepl(classification,
                                          pattern = 'Low SAINT, Low')) |> 
                    dplyr::pull(Protein)),],
-  color = grDevices::colorRampPalette(c('navy', 'white', 'darkgoldenrod'))((200)),
+  color = grDevices::colorRampPalette(c('navy',
+                                        'white',
+                                        'darkgoldenrod'))((200)),
   cluster_rows = T,
   cluster_cols = F,
   show_rownames = F,
@@ -1016,7 +1034,9 @@ pheatmap::pheatmap(
                                    grepl(classification,
                                          pattern = 'Low SAINT, High')) |> 
                    dplyr::pull(Protein)),],
-  color = grDevices::colorRampPalette(c('navy', 'white', 'darkgoldenrod'))((200)),
+  color = grDevices::colorRampPalette(c('navy',
+                                        'white',
+                                        'darkgoldenrod'))((200)),
   cluster_rows = T,
   cluster_cols = F,
   show_rownames = F,
@@ -1058,7 +1078,7 @@ if (identical(fmt, "html")) {
 } else if (identical(fmt, "markdown")) {
   cat('<details><summary><strong>Results Tables</strong></summary>\n')
 } else {
-  cat('#Results Tables\n')
+  cat('# Results Tables\n')
 }
 ```
 
@@ -1081,14 +1101,17 @@ DT::datatable(
                                  score_mass), ~paste0("module_", .x)) |> 
     dplyr::filter(!is.na(GO_Term)) |> 
     dplyr::filter(!is.na(GO_Category)) |> 
-    dplyr::filter((grepl(module, pattern = '12') & 
-                     hSAINT_score > 0.5) |
-                    (grepl(classification,
-                           pattern = 'High SAINT, Low') &
-                       hSAINT_score > 0.5)
-    )
-  )
+    dplyr::filter( (grepl(module,
+                          pattern = '12') &
+                      hSAINT_score > 0.5) |
+                     (grepl(classification,
+                            pattern = 'High SAINT, Low') &
+                     hSAINT_score > 0.5)
+                   )
+)
 ```
+
+This (complete) table exists as [hClust_protein_level_GO_GSEA.rda](../../analysis/R/hClust/hClust_protein_level_GO_GSEA.rda) in [Endo/analysis/R/hClust/](../../analysis/R/hClust)
 
 ## Clustering Results Table by Module
 
@@ -1107,7 +1130,7 @@ DT::datatable(
 )
 ```
 
-
+This table exists as [hClust_module_level_GO_GSEA.rda](../../analysis/R/hClust/hClust_module_level_GO_GSEA.rda) in [Endo/analysis/R/hClust/](../../analysis/R/hClust)
 
 ```{r, results='asis', echo=FALSE}
 fmt <- knitr::pandoc_to()

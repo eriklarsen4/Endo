@@ -22,6 +22,7 @@
 ^\.gitignore$
 ^\.gitattributes$
 ^\.gitmodules$
+^coherence_internal\.md$
 
 # Python package and related files
 ^python/
@@ -58,6 +59,8 @@
 ^scratch/
 ^tmp/
 ^temp/
+^analysis/.*\.md$
+^analysis/.*\.html$
 
 # Build artifacts
 ^.*\.tar\.gz$
