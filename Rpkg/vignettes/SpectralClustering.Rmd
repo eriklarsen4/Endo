@@ -1,0 +1,388 @@
+---
+title: "Spectral Clustering vignette"
+author: "Erik Larsen"
+date: "`r Sys.Date()`"
+always_allow_html: true
+output:
+  html_document:
+    toc: true
+    fig_width: 10
+    fig_height: 10
+  pdf_document:
+    fig_width: 10
+    fig_height: 10
+    latex_engine: xelatex
+  md_document:
+    variant: gfm
+vignette: >
+  %\VignetteIndexEntry{Spectral Clustering vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Overview
+
+This markdown was developed to formally document an ad-hoc cluster analysis for 
+TMEM184B immunoprecipitation tandem mass-spec experiments for 
+**Dr. Martha Bhattacharya's lab** at the **University of Arizona** for the
+endolysosomal paper under revision (2025-02-28) for the Journal of Cell Science
+
+This vignette documents the `Spectral Clustering` of this IPMS data
+
+```{r reset-shiny-mode, include=FALSE}
+options(htmlwidgets.shinyMode = FALSE)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 10,
+  fig.height = 12,
+  dev = c("png", "pdf"),
+  fig.path = "../../analysis/R/hClust/"
+)
+```
+
+## Attach Packages
+
+```{r Attach Packages, message=F,warning=F}
+# data/wrangling
+library(tidyverse)
+library(Endo)
+library(DT)
+
+# clustering
+library(pheatmap)
+library(dynamicTreeCut)
+  ## (kNN)
+library(FNN)
+
+# GSEA/viz
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(ReactomePA)
+library(AnnotationDbi)
+
+# progress bar
+library(progressr)
+
+# parallelization
+library(future)
+library(future.apply)
+
+# network viz
+library(visNetwork)
+
+options(stringsAsFactors = FALSE)
+```
+
+## Load the Pre-Computed Data
+
+```{r Data Load}
+# Load precomputed objects from preprocessing
+load("../../analysis/R/precompute_objects.rda")
+```
+
+```{r Second Data Load, echo = FALSE}
+rm(IPMS_mat_log)
+rm(IPMS_mat_Z)
+```
+
+## Transform the Data to Distance Matrix
+
+```{r Compute Distance Matrix}
+IPMS_dist <- 1 - stats::cor(t(IPMS_mat),
+                            use = 'pairwise.complete.obs') |> 
+  as.matrix()
+```
+
+
+```{r, results='asis', echo=FALSE}
+fmt <- knitr::pandoc_to()
+
+if (identical(fmt, "html")) {
+  cat('# Spectral Clustering {.tabset .tabset-pills .tabset-fade}\n')
+} else if (identical(fmt, "markdown")) {
+  cat('<details><summary><strong>Spectral Clustering</strong></summary>\n')
+} else {
+  cat('# Spectral Clustering\n')
+}
+```
+
+Spectral clustering *uses the same correlation-based distance representation as
+[hierarchical clustering](HierarchicalClustering.Rmd).
+
+We compute the pairwise distance matrix as 
+**1 - Pearson correlation between proteins**, matching the above vignette, exactly.
+
+This method was chosen because of the wild variation in protein abundance, 
+contamination proteins often inflating magnitude, immunoprecipitation (bait) 
+biases, emphasis on the pattern in terms of signal, not scale.
+
+Correlation distance:
+
++ centers and scales each protein
++ removes/accounts for magnitude effects, focusing on the shape of the profile
+  + is therefore robust to contaminants and bait biases
+
+This is standard in proteomics clustering
+
+```{r, results='asis', echo=FALSE}
+fmt <- knitr::pandoc_to()
+
+if (identical(fmt, "html")) {
+  cat('## Similarity Matrix {.tabset .tabset-pills .tabset-fade}\n')
+} else if (identical(fmt, "markdown")) {
+  cat('<details><summary><strong>Similarity Matrix</strong></summary>\n')
+} else {
+  cat('## Similarity Matrix\n')
+}
+```
+
+Build a similarity matrix from the distance matrix derived from correlation distances of raw counts
+
+  -> will be used for clustering (closeness between data, e.g. proteins)
+  
+  Two options:
+  
+  1. Gaussian similarity matrix (using the Radial Basis Function kernel)
+  
+    + ideal for smooth, low-noise datasets
+    + smooth, continuous calculations of distances without hard cutoffs
+    
+  2. k-Nearest Neighbors adjacency graph
+  
+    + ideal for sparse or data with heteregeneous density; noisy data (e.g. 
+    IPMS datasets with lots of contaminants)
+    
+  We will compare and select the method that yields the most stable Laplacian
+  spectrum
+  
+### Gaussian (Radial Basis Function) Kernel Similarity Matrix
+
+*S_ij* = exp(-(*D_ij*^2)/2*sigma*^2)
+  
+```{r Sim Matrix Construction w Gaussian kernel aka radial basis kernel}
+# choose a kernel width (sigma) based on the distance distribution
+sigma <- stats::median(IPMS_dist)
+
+# compute the Gaussian (RBF) similarity matrix
+sim_mat <- exp(-(IPMS_dist^2)/(2*sigma^2))
+```
+  
+### kNN Adjacency
+
+```{r Sim Matrix Construction w kNN}
+# compute k-nearest neighbors from teh correlation-distance matrix
+knn_idx <- FNN::get.knn(IPMS_dist, k = 10)$nn.index
+
+# convert to binary adjacency matrix
+adjacency <- matrix(0, nrow = nrow(knn_index), ncol = nrow(knn_idx))
+
+for (i in seq_len(nrow(knn_idx))) {
+  adjacency[i, knn_idx[i, ]] <- 1
+}
+
+# make symmetrical
+symmetrical_adjacency <- (adjacency + t(adjacency)) > 0
+
+# build kNN graph
+knn_graph <- FNN::get.knn(, k = 10)$nn.index
+```
+
+```{r, results='asis', echo=FALSE}
+fmt <- knitr::pandoc_to()
+
+if (identical(fmt, "html")) {
+  cat('# Laplacian {.tabset .tabset-pills .tabset-fade}\n')
+} else if (identical(fmt, "markdown")) {
+  cat('<details><summary><strong>Laplacian</strong></summary>\n')
+} else {
+  cat('# Laplacian\n')
+}
+```
+
+Compute the graph `Laplacian` of the similarity or adjacency matrix
+
++ this is the formal encoding of the graph structure based on distribution of 
+space (similarity distances between nodes)
+
++ **The Laplacian** measures how each point (protein) differs from the weighted
+average of its neighbors:
+
+  + L = D - W
+
++ where:
+  
+  + *W* is either the `Gaussian similarity matrix` (*S*, `sim_mat`) or `kNN adjacency matrix`
+  (*A*, `adjacency_sym`)
+  + *D* is the degree matrix (diagonal, i.e. total connection strength of a node)
+    + D[i,i] = sum_j*W[i,j]
+    + `Gaussian` degrees vary smoothly; `kNN` degrees are roughly constant
+    
++ The standard approach (used here) to compute the `Laplacian` for spectral clustering is to
+normalize it to handle contaminants, uneven cluster sizes and heterogeneous densities:
+
+  + *L_norm* = *D*^(-1/2)(*D*-*W*)*D*^(-1/2)
+  or *L_norm* = *I*-*D*^(-1/2)*WD*^(-1/2)
+  
++ **The Laplacian** is the operator whose eigenvectors reveal:
+
+  + connected components
+  + cluster structure
+
+## Diagonal, Normalized Laplacian
+
+```{r Construct the Laplacian on the Gaussian}
+# choose W: either sim_mat (Gaussian) or A_sym (kNN)
+if ( choose_similarity_approach == 'A' ) {
+  W <- sim_mat
+} else {
+  W <- adjacency_sim
+}
+
+# degree matrix
+D <- diag(rowSums(W))
+
+# normalized Laplacian
+D_inv_sqrt <- diag(1 / sqrt(rowSums(W)))
+L_norm <- diag(nrow(W)) - D_inv_sqrt %*% W %*% D_inv_sqrt
+```
+
+```{r, results='asis', echo=FALSE}
+fmt <- knitr::pandoc_to()
+
+if (identical(fmt, "html")) {
+  cat('# Eigen Decomposition {.tabset .tabset-pills .tabset-fade}\n')
+} else if (identical(fmt, "markdown")) {
+  cat('<details><summary><strong>Eigen Decomposition</strong></summary>\n')
+} else {
+  cat('# Eigen Decomposition\n')
+}
+```
+
+Conduct Eigen decomposition and extract eigenvectors as an embedding
+
+## Similarity Matrix
+
+```{r Conduct Eigen decomposition on similarity matrix}
+# compute eigen decomposition of the normalized Laplacian
+eig <- eigen(L_norm, symmetric = TRUE)
+
+# extract eigenvalues and eigenvectors
+eigenvalues <- eig$values
+eigenvectors <- eig$vectors
+```
+
+## Choose Embedding Dimension
+
+```{r Select Number of Eigenvectors to retain}
+# inspect eigenvalues to identify the eigengap
+plot(eigenvalues,
+     type = "b",
+     main = "Laplacian Eigenvalue Spectrum",
+     xlab = "Index",
+     ylab = "Eigenvalue")
+```
+
+```{r}
+# choose k based on the eigengap
+k <- 4   # example
+
+# spectral embedding: use the first k non-trivial eigenvectors
+embedding <- eigenvectors[, 2:(k + 1)]
+```
+
+
+```{r, results='asis', echo=FALSE}
+fmt <- knitr::pandoc_to()
+
+if (identical(fmt, "html")) {
+  cat('# k-means clustering {.tabset .tabset-pills .tabset-fade}\n')
+} else if (identical(fmt, "markdown")) {
+  cat('<details><summary><strong>k-means clustering</strong></summary>\n')
+} else {
+  cat('# k-means\n')
+}
+```
+
+Conduct k-means clustering on the eigenvectors/embedding
+
+```{r kMeans on embeddings}
+set.seed(4)
+labels <- stats::kmeans(embedding, centers = k)$cluster
+```
+
+```{r, results='asis', echo=FALSE}
+fmt <- knitr::pandoc_to()
+
+if (identical(fmt, "html")) {
+  cat('# Results {.tabset .tabset-pills .tabset-fade}\n')
+} else if (identical(fmt, "markdown")) {
+  cat('<details><summary><strong>Results</strong></summary>\n')
+} else {
+  cat('# Results\n')
+}
+```
+
+```{r Collect Results}
+spectral_result <- list(
+  labels = labels,
+  embedding = embedding,
+  similarity = sim_mat
+)
+```
+
+```{r, results='asis', echo=FALSE}
+fmt <- knitr::pandoc_to()
+
+if (identical(fmt, "html")) {
+  cat('# Visualizations {.tabset .tabset-pills .tabset-fade}\n')
+} else if (identical(fmt, "markdown")) {
+  cat('<details><summary><strong>Visualizations</strong></summary>\n')
+} else {
+  cat('# Visualizations\n')
+}
+```
+
+## Cluster Barplot
+
+```{r ClusterBarPlot}
+```
+
+## Heatmap of Similarity Matrix
+
+```{r SimMatHeatmap}
+
+```
+
+## Embedding
+
+```{r PCA of Embedding}
+
+```
+
+## Network
+
+```{r}
+
+```
+
+```{r, results='asis', echo=FALSE}
+fmt <- knitr::pandoc_to()
+
+if (identical(fmt, "html")) {
+  cat('# Coherence {.tabset .tabset-pills .tabset-fade}\n')
+} else if (identical(fmt, "markdown")) {
+  cat('<details><summary><strong>Coherence</strong></summary>\n')
+} else {
+  cat('# Coherence\n')
+}
+```
+
+```{r Compute coherence}
+
+```
+
