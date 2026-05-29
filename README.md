@@ -27,11 +27,9 @@ respective URL. Among other datasets and analyses, they contain multiple, functi
 
 Please see the [`FIREpHly` microscopy data vignette](<https://github.com/eriklarsen4/Endo/blob/dev/Rpkg/vignettes/FIREpHly.md>) and the [immunoprecipitation- label-free mass spec (`IPMS`) data vignette](<https://github.com/eriklarsen4/Endo/blob/dev/Rpkg/vignettes/IPMS.md>) for more detail on each dataset's data cleaning and analysis.
 
-Additional computational biology work on the published data is outlined in broad strokes [here](<https://github.com/eriklarsen4/Endo/tree/dev/python#readme>), with other vignettes in progress. This work expands on the "gold standard" mixture modeling approach in affinity-precipitation mass spectrometry (`APMS` or `IPMS`) to infer proteins that truly interact with a target protein from a mixture of proteins.
+Additional computational biology work on the published data is outlined in broad strokes [here](<https://github.com/eriklarsen4/ORION/tree/main/python>), with other vignettes in progress. This work improves upon the "gold standard" mixture modeling approach in affinity-precipitation mass spectrometry (`APMS` or `IPMS`) to infer proteins that truly interact with a target protein from a mixture of proteins.
 
-Three packages are associated with this repository:
+Two packages are associated with this repository:
 
  1. A custom R package, [TMEM](<[https://github.com/eriklarsen4/TMEM](https://github.com/eriklarsen4/TMEM/pkgs/container/tmem)>), used for downstream gene set analyses and visualizations
- 2. This repository's R package, [Endo](<https://github.com/eriklarsen4/Endo/pkgs/container/endo>), which gathers the data used for the publication
- 3. A python package, [saint](<https://github.com/eriklarsen4/Endo/tree/dev/python>) (name change is forthcoming), which enables "plug-and-play" analysis of protein-protein interactions (`interactomes`)
-    + this package contains two protein-interaction inference pipelines-- the `SAINT` algorithm, and a more complex iteration of it-- enabling benchmarking relative to the original gold-standard in interactomics
+ 2. This repository's R package, [Endo](<https://github.com/eriklarsen4/Endo/pkgs/container/endo>), which gathers the data used for the publication and documents it for reproducibility
